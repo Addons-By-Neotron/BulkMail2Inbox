@@ -7,14 +7,12 @@
 ## X-eMail: hyperactiveChipmunk@gmail.com
 ## X-Website: http://wowace.com/wiki/BulkMail2Inbox
 ## SavedVariables: BulkMail2InboxDB
-## OptionalDeps: Ace2, TabletLib, DewdropLib, AbacusLib, FuBar, FuBarPlugin-2.0, BulkMail2, LibPeriodicTable-3.1
-## X-Embeds: Ace2, TabletLib, DewdropLib, AbacusLib, FuBarPlugin-2.0, LibPeriodicTable-3.1
+## OptionalDeps: Ace2, TabletLib, DewdropLib, AbacusLib, FuBar, FuBarPlugin-2.0, BulkMail2
+## X-Embeds: Ace2, TabletLib, DewdropLib, AbacusLib, FuBarPlugin-2.0
 ## LoadManagers: SupplyAndDemand, ForkliftGnome, AddonLoader
 ## X-S&D-AtMail: true
 ## X-LoadOn-Mailbox: true
 ## X-LoadOn-Slash: /bulkmailinbox, /bmi
-
-lib/LibStub.lua
 
 embeds.xml
 
