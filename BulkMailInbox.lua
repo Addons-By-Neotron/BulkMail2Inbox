@@ -359,9 +359,11 @@ function BulkMailInbox:RegisterInboxGUI()
 							'checked', true, 'hasCheck', true, 'checkIcon', not markTable[info.bmid] and info.texture,
 							'func', function()
 								if not IsModifierKeyDown() then
-									markTable[info.bmid] = not markTable[info.bmid] and true or nil
-									self:RefreshInboxGUI()
-								else
+								        if info.bmid then 
+										markTable[info.bmid] = not markTable[info.bmid] and true or nil
+										self:RefreshInboxGUI()
+									end
+								elseif info.index and info.attachment then
 									self:InboxFrame_OnClick(nil, info.index, info.attachment)
 								end
 							end,
