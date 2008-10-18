@@ -248,20 +248,22 @@ function BulkMailInbox:MAIL_INBOX_UPDATE()
 		return self:MAIL_INBOX_UPDATE()
 	end
 
-	if curAttachIndex == 0 and money > 0 then
-		cleanPass = false
-		if GetInboxInvoiceInfo(curIndex) then
-			TakeInboxMoney(curIndex)
-		else
-			TakeInboxMoney(curIndex)
-			return self:MAIL_INBOX_UPDATE()
+	if not string.find(subject, "Sale Pending") then 
+		if curAttachIndex == 0 and money > 0 then
+			cleanPass = false
+			if GetInboxInvoiceInfo(curIndex) then
+				TakeInboxMoney(curIndex)
+			else
+				TakeInboxMoney(curIndex)
+				return self:MAIL_INBOX_UPDATE()
+			end
+		elseif not cashOnly and cod == 0 then
+			cleanPass = false
+			if not invFull then
+				TakeInboxItem(curIndex, curAttachIndex)
+			end
 		end
-	elseif not cashOnly and cod == 0 then
-		cleanPass = false
-		if not invFull then
-			TakeInboxItem(curIndex, curAttachIndex)
-		end
-	end
+  	end     
 	return self:MAIL_INBOX_UPDATE()
 end
 
@@ -281,7 +283,7 @@ function BulkMailInbox:SetInboxItem(tooltip, index, attachment, ...)
 	end
 end
 
-function BulkMailInbox:InboxFrame_OnClick(index, attachment, ...)
+function BulkMailInbox:InboxFrame_OnClick(parentself, index, attachment, ...)
 	takeAllInProgress = false
 	local _, _, _, _, money, cod, _, hasItem, _, wasReturned, _, canReply = GetInboxHeaderInfo(index)
  	if self.db.char.shiftTake and IsShiftKeyDown() then
@@ -290,7 +292,7 @@ function BulkMailInbox:InboxFrame_OnClick(index, attachment, ...)
 		elseif hasItem then TakeInboxItem(index, attachment) end
 	elseif self.db.char.ctrlRet and IsControlKeyDown() and not wasReturned and canReply then ReturnInboxItem(index)
 	elseif self.db.char.altDel and IsAltKeyDown() and wasReturned then DeleteInboxItem(index)
-	elseif this:GetObjectType() == 'CheckButton' then self.hooks.InboxFrame_OnClick(index, ...) end
+	elseif this:GetObjectType() == 'CheckButton' then self.hooks.InboxFrame_OnClick(parentself, index, ...) end
 	self:ScheduleEvent(self.RefreshInboxGUI, 0.1, self)
 end
 
@@ -360,12 +362,14 @@ function BulkMailInbox:RegisterInboxGUI()
 									markTable[info.bmid] = not markTable[info.bmid] and true or nil
 									self:RefreshInboxGUI()
 								else
-									self:InboxFrame_OnClick(info.index, info.attachment)
+									self:InboxFrame_OnClick(nil, info.index, info.attachment)
 								end
 							end,
 							'onEnterFunc', function()  -- contributed by bigzero
 								GameTooltip:SetOwner(_G.this, 'ANCHOR_RIGHT', 7, -18)
-								GameTooltip:SetInboxItem(info.index, info.attachment)
+								if info.index and info.attachment and GetInboxItem(info.index, info.attachment) then
+									GameTooltip:SetInboxItem(info.index, info.attachment)
+								end
 								if IsShiftKeyDown() then
 									GameTooltip_ShowCompareItem()
 								end
@@ -374,7 +378,7 @@ function BulkMailInbox:RegisterInboxGUI()
 									SetTooltipMoney(GameTooltip, info.money)
 									SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
 								end 
-								if info.cod > 0 then
+								if (info.cod or 0) > 0 then
 									GameTooltip:AddLine(COD_AMOUNT, "", 1, 1, 1)
 									SetTooltipMoney(GameTooltip, info.cod)
 									SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
