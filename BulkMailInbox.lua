@@ -307,7 +307,7 @@ function BulkMailInbox:UpdateTakeAllButton()
 		bmiTakeAllButton:SetWidth(120)
 		bmiTakeAllButton:SetHeight(25)
 		bmiTakeAllButton:SetPoint("CENTER", InboxFrame, "TOP", -15, -410)
-		bmiTakeAllButton:SetText("Take All")
+		bmiTakeAllButton:SetText(L["Take All"])
 		bmiTakeAllButton:SetScript("OnClick", function() takeAll() end)
 	else
 		if _G.BMI_TakeAllButton then _G.BMI_TakeAllButton:Hide() end

@@ -1,6 +1,7 @@
-## Interface: 30000
+﻿## Interface: 30000
 ## Title: BulkMail Inbox |cff7fff7f -Ace2-|r
 ## Notes: Bulk mail reception made really easy
+## Notes-ruRU: BulkMail - получение почты делает на много легче
 ## Version: 3.0.2
 ## Author: hyperactiveChipmunk
 ## X-Category: Mail
@@ -17,6 +18,7 @@
 embeds.xml
 
 BulkMailInbox-enUS.lua
+BulkMailInbox-ruRU.lua
 BulkMailInbox-deDE.lua
 BulkMailInbox-zhTW.lua
 BulkMailInbox.lua
