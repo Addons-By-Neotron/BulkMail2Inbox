@@ -186,11 +186,13 @@ end
 function BulkMailInbox:MAIL_SHOW()
 	ibIndex = GetInboxNumItems()
 
-	self:SecureHook('CheckInbox', 'RefreshInboxGUI')
-	self:SecureHook(GameTooltip, 'SetInboxItem')
-	self:Hook('InboxFrame_OnClick', nil, true)
-	self:SecureHookScript(MailFrameTab1, 'OnClick', 'ShowInboxGUI')
-	self:SecureHookScript(MailFrameTab2, 'OnClick', 'HideInboxGUI')
+	if not self:IsHooked('CheckInbox') then
+		self:SecureHook('CheckInbox', 'RefreshInboxGUI')
+		self:SecureHook(GameTooltip, 'SetInboxItem')
+		self:Hook('InboxFrame_OnClick', nil, true)
+		self:SecureHookScript(MailFrameTab1, 'OnClick', 'ShowInboxGUI')
+		self:SecureHookScript(MailFrameTab2, 'OnClick', 'HideInboxGUI')
+	end
 
 	self:ShowInboxGUI()
 end
