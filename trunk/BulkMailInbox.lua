@@ -294,7 +294,7 @@ function BulkMailInbox:InboxFrame_OnClick(parentself, index, attachment, ...)
 		elseif hasItem then TakeInboxItem(index, attachment) end
 	elseif self.db.char.ctrlRet and IsControlKeyDown() and not wasReturned and canReply then ReturnInboxItem(index)
 	elseif self.db.char.altDel and IsAltKeyDown() and wasReturned then DeleteInboxItem(index)
-	elseif this:GetObjectType() == 'CheckButton' then self.hooks.InboxFrame_OnClick(parentself, index, ...) end
+	elseif self:GetObjectType() == 'CheckButton' then self.hooks.InboxFrame_OnClick(parentself, index, ...) end
 	self:ScheduleEvent(self.RefreshInboxGUI, 0.1, self)
 end
 
@@ -370,7 +370,7 @@ function BulkMailInbox:RegisterInboxGUI()
 								end
 							end,
 							'onEnterFunc', function()  -- contributed by bigzero
-								GameTooltip:SetOwner(_G.this, 'ANCHOR_RIGHT', 7, -18)
+								GameTooltip:SetOwner(UIParent, 'ANCHOR_RIGHT', 7, -18)
 								if info.index and info.attachment and GetInboxItem(info.index, info.attachment) then
 									GameTooltip:SetInboxItem(info.index, info.attachment)
 								end
@@ -388,11 +388,11 @@ function BulkMailInbox:RegisterInboxGUI()
 									SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
 								end 
 								GameTooltip:Show()
-								highlightSameMailItems(this.col6 and this.col6:GetText(), this:GetParent():GetChildren())
+--								highlightSameMailItems(self.col6 and self.col6:GetText(), self:GetParent():GetChildren())
 							end,
-							'onLeaveFunc', function()
-								unhighlightSameMailItems(this.col6 and this.col6:GetText(), this:GetParent():GetChildren())
-							end,
+--							'onLeaveFunc', function(self)
+--								unhighlightSameMailItems(self.col6 and self.col6:GetText(), self:GetParent():GetChildren())
+--							end,
 							'indentation', markTable[info.bmid] and 0 or 10,
 							'text',  info.itemLink or L["Cash"],
 							'text2', info.money and abacus:FormatMoneyFull(info.money) or info.qty,
