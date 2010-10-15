@@ -1,8 +1,8 @@
-﻿## Interface: 30000
+﻿## Interface: 40000
 ## Title: BulkMail Inbox |cff7fff7f -Ace2-|r
 ## Notes: Bulk mail reception made really easy
 ## Notes-ruRU: BulkMail - получение почты делает на много легче
-## Version: 3.0.2
+## Version: 3.0.3
 ## Author: hyperactiveChipmunk
 ## X-Category: Mail
 ## X-eMail: hyperactiveChipmunk@gmail.com
