@@ -367,6 +367,8 @@ function BulkMailInbox:RegisterInboxGUI()
 									end
 								elseif info.index and info.attachment then
 									self:InboxFrame_OnClick(nil, info.index, info.attachment)
+								elseif info.index and info.money then	--not sure why, but had to add a check for money. did this break in 4.0.1 or did this never work?
+									self:InboxFrame_OnClick(nil, info.index, info.money)
 								end
 							end,
 							'onEnterFunc', function()  -- contributed by bigzero
