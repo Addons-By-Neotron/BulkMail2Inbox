@@ -293,7 +293,7 @@ function BulkMailInbox:InboxFrame_OnClick(parentself, index, attachment, ...)
 		elseif hasItem then TakeInboxItem(index, attachment) end
 	elseif self.db.char.ctrlRet and IsControlKeyDown() and not wasReturned and canReply then ReturnInboxItem(index)
 	elseif self.db.char.altDel and IsAltKeyDown() and wasReturned then DeleteInboxItem(index)
-	elseif self:GetObjectType() == 'CheckButton' then self.hooks.InboxFrame_OnClick(parentself, index, ...) end
+	elseif parentself:GetObjectType() == 'CheckButton' then self.hooks.InboxFrame_OnClick(parentself, index, ...) end
 	self:ScheduleEvent(self.RefreshInboxGUI, 0.1, self)
 end
 
