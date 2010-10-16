@@ -9,7 +9,7 @@ local abacus = AceLibrary('Abacus-2.0')
 local _G = _G
 
 local sortFields, markTable  -- tables
-local ibIndex, ibAttachIndex, inboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress  -- variables
+local ibIndex, ibAttachIndex, inboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull  -- variables
 
 --[[----------------------------------------------------------------------------
   Table Handling
@@ -95,7 +95,6 @@ local function takeAll(cash, mark)
 	ibIndex = GetInboxNumItems()
 	ibAttachIndex = 0
 	takeAllInProgress = true
-	lastMoneyIndex = 0
 	inboxCacheBuild()
 	BulkMailInbox:MAIL_INBOX_UPDATE()
 end
@@ -321,7 +320,7 @@ end
 local function highlightSameMailItems(index, ...)
 	if self.db.char.altDel and IsAltKeyDown() or self.db.char.ctrlRet and IsControlKeyDown() then
 		for i = 1, select('#', ...) do
-			row = select(i, ...)
+			local row = select(i, ...)
 			if row.col6 and row.col6:GetText() == index then
 				row.highlight:Show()
 			end
@@ -331,7 +330,7 @@ end
 
 local function unhighlightSameMailItems(index, ...)
 	for i = 1, select('#', ...) do
-		row = select(i, ...)
+		local row = select(i, ...)
 		if row.col6 and row.col6:GetText() == index then
 			row.highlight:Hide()
 		end
