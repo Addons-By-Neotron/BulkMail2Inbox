@@ -285,7 +285,7 @@ function mod:MAIL_CLOSED()
 end
 BulkMailInbox.PLAYER_ENTERING_WORLD = BulkMailInbox.MAIL_CLOSED  -- MAIL_CLOSED doesn't get called if, for example, the player accepts a port with the mail window open
 
-function mod:UI_ERROR_MESSAGE(msg)  -- prevent infinite loop when inventory is full
+function mod:UI_ERROR_MESSAGE(event, msg)  -- prevent infinite loop when inventory is full
    if msg == ERR_INV_FULL then
       invFull = true
    end
@@ -360,23 +360,19 @@ function mod:TakeNextItemFromMailbox()
    if not string.find(subject, "Sale Pending") then 
       if curAttachIndex == 0 and money > 0 then
 	 cleanPass = false
-	 if GetInboxInvoiceInfo(curIndex) then
-	    TakeInboxMoney(curIndex)
-	 else
-	    TakeInboxMoney(curIndex)
-	 end
-	 self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 0.5)
-	 self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.5)
-	 return
+	 TakeInboxMoney(curIndex)
       elseif not cashOnly and cod == 0 then
 	 cleanPass = false
 	 if not invFull then
 	    TakeInboxItem(curIndex, curAttachIndex)
-	    self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 0.5)
-	    self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.5)
-	    return
 	 end
       end
+   end
+
+   if not cleanPass then
+      self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
+      self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
+      return
    end
    -- Tail recurse
    return self:TakeNextItemFromMailbox()
