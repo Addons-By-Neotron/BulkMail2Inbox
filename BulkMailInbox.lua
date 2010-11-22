@@ -22,7 +22,7 @@ local _G = _G
 local fmt = string.format
 
 
-local sortFields, markTable  -- tables
+--local sortFields, markTable  -- tables
 local ibIndex, ibAttachIndex, inboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull  -- variables
 
 --[[----------------------------------------------------------------------------
@@ -129,6 +129,12 @@ local function inboxCacheBuild()
 end
 
 local function takeAll(cash, mark)
+   -- Ace3 timers only allow one arg so support that hack
+   if type(cash) == "table" then
+      mark = cash.markOnly
+      cash = cash.cashOnly
+   end
+   
    cashOnly = cash
    markOnly = mark
    ibIndex = GetInboxNumItems()
@@ -144,6 +150,7 @@ Setup
 local function color(text, color)
    return fmt("|cff%s%s|r", color, text)
 end
+
 function mod:OnInitialize()
    if not BulkMail3InboxDB and BulkMail2InboxDB and BulkMail2InboxDB.chars then
       BulkMail3InboxDB = { char = {} }
@@ -296,6 +303,7 @@ function mod:SmartCancelTimer(name)
 end
 
 function mod:SmartScheduleTimer(name, override, method, timeout, ...)
+   print("*** scheduling timer: ", name)
    mod.timers = mod.timers or {}
    if mod.timers[name] and override then
       mod:CancelTimer(mod.timers[name], true)
@@ -308,7 +316,7 @@ end
 
 function mod:MAIL_INBOX_UPDATE()
    if not takeAllInProgress and not self.refreshInboxTimer then
-      mod:SmartScheduleTimer('BMI_RefreshInboxGUI', false, self.RefreshInboxGUI, .5, self)
+      mod:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", .5)
    end
 end
 
@@ -326,7 +334,7 @@ function mod:TakeNextItemFromMailbox()
 	 ibIndex = numMails
 	 ibAttachIndex = 0
 	 cleanPass = true
-	 return self:SmartScheduleTimer('BMI_takeAll', true, takeAll, .1, cashOnly, markOnly)
+	 return self:SmartScheduleTimer('BMI_takeAll', true, takeAll, .1, { cashOnly = cashOnly, markOnly = markOnly })
       end
    end
    
