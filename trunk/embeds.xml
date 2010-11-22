@@ -12,6 +12,7 @@
   <Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml"/>
   <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml"/>
   <Include file="Libs\AceHook-3.0\AceHook-3.0.xml"/>
+  <Include file="Libs\LibDropdown-1.0\lib.xml"/>
 
   <Script file="Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
   <Include file="Libs\LibAbacus-3.0\lib.xml"/>
