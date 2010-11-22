@@ -1,7 +1,6 @@
 BulkMailInbox = LibStub("AceAddon-3.0"):NewAddon("BulkMailInbox", "AceConsole-3.0", "AceEvent-3.0", "AceTimer-3.0", "AceHook-3.0")
 
 local mod, self, BulkMailInbox = BulkMailInbox, BulkMailInbox, BulkMailInbox
-local L = AceLibrary('AceLocale-2.2'):new('BulkMailInbox')
 
 local VERSION = "4.0-beta"
 local LibStub = LibStub
