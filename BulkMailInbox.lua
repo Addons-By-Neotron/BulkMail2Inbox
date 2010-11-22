@@ -3,6 +3,7 @@ BulkMailInbox = LibStub("AceAddon-3.0"):NewAddon("BulkMailInbox", "AceConsole-3.
 local mod, self, BulkMailInbox = BulkMailInbox, BulkMailInbox, BulkMailInbox
 local L = AceLibrary('AceLocale-2.2'):new('BulkMailInbox')
 
+local VERSION = "4.0-beta"
 local LibStub = LibStub
 
 local L        = LibStub("AceLocale-3.0"):GetLocale("BulkMailInbox", false)
@@ -15,6 +16,7 @@ local AC       = LibStub("AceConfig-3.0")
 local ACD      = LibStub("AceConfigDialog-3.0")
 local DB       = LibStub("AceDB-3.0")
 local LDB      = LibStub("LibDataBroker-1.1", true)
+local LD       = LibStub("LibDropdown-1.0")
 
 
 local _G = _G
@@ -140,6 +142,9 @@ end
 --[[----------------------------------------------------------------------------
 Setup
 ------------------------------------------------------------------------------]]
+local function color(text, color)
+   return fmt("|cff%s%s|r", color, text)
+end
 function mod:OnInitialize()
    if not BulkMail3InboxDB and BulkMail2InboxDB and BulkMail2InboxDB.chars then
       BulkMail3InboxDB = { char = {} }
@@ -199,13 +204,33 @@ function mod:OnInitialize()
       },
    }
 
+   -- set up LDB, but only if the user doesn't have Bulk Mail already
+   if LDB and not BulkMail then
+      self.ldb =
+	 LDB:NewDataObject("BulkMailInbox",
+			   {
+			      type =  "launcher", 
+			      label = L["Bulk Mail Inbox"]..VERSION,
+			      icon = [[Interface\Addons\BulkMail2\icon]],
+			      tooltiptext = color(L["Bulk Mail Inbox"]..VERSION.."\n\n", "ffff00")..color(L["Hint:"].." "..L["Left click to open the config panel."].."\n"..
+											  L["Right click to open the config menu."], "ffd200"),
+			      OnClick = function(clickedframe, button)
+					   if button == "RightButton" then
+					      mod:OpenConfigMenu(clickedframe)
+					   else
+					      mod:ToggleConfigDialog()
+					   end
+					end,
+			   })
+   end
+
    self._mainConfig = self:OptReg(L["Bulk Mail Inbox"], self.opts,  { "bmi", "bulkmailinbox" })
 
    if BulkMail then
       BulkMail.opts.args.inbox = { type = "group",
 				   handler = mod,
 				   name = L["Inbox"],
-				   desc = L["BulkMailInbox Options"],
+				   desc = L["Bulk Mail Inbox Options"],
 				   args = BulkMailInbox.opts.args
 				}
    end
@@ -423,9 +448,6 @@ end
 --[[----------------------------------------------------------------------------
 QTip GUI
 ------------------------------------------------------------------------------]]
-local function color(text, color)
-   return fmt("|cff%s%s|r", color, text)
-end
 
 local function _addIndentedCell(tooltip, text, indentation, func, arg)
    local y, x = tooltip:AddLine()
@@ -552,7 +574,7 @@ function mod:ShowInboxGUI()
 
 
    local y = tooltip:AddHeader();
-   tooltip:SetCell(y, 1, color(fmt(L["BulkMailInbox -- Inbox Items (%d mails, %d items, %s)"], GetInboxNumItems(), inboxItems, abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetHeaderFont(), "CENTER", 7)
+   tooltip:SetCell(y, 1, color(fmt(L["Bulk Mail Inbox -- Inbox Items (%d mails, %d items, %s)"], GetInboxNumItems(), inboxItems, abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetHeaderFont(), "CENTER", 7)
    tooltip:AddLine(" ")
    local sel = function(str, col)
 		  return color(str, col == mod.db.char.sortField and "ffff7f" or "ffffff")
@@ -623,11 +645,13 @@ function mod:OptReg(optname, tbl, cmd)
    local configPanes = self.configPanes or {}
    self.configPanes = configPanes
    AC:RegisterOptionsTable(optname, tbl, cmd)
-   regtable = ACD:AddToBlizOptions(optname, L["Bulk Mail Inbox"])
+   if not BulkMail then
+      -- Only add it to the UI if it's not already added to Bulk Mail
+      regtable = ACD:AddToBlizOptions(optname, L["Bulk Mail Inbox"])
+   end
    configPanes[#configPanes+1] = optname
    return regtable
 end
-
 function mod:OpenConfigMenu(parentframe)
    -- create the menu   
    local frame = LD:OpenAce3Menu(mod.opts)
@@ -638,5 +662,7 @@ function mod:OpenConfigMenu(parentframe)
 end
 
 function mod:ToggleConfigDialog()
-   InterfaceOptionsFrame_OpenToCategory(self._mainConfig)
+   if mod._mainConfig then
+      InterfaceOptionsFrame_OpenToCategory(mod._mainConfig)
+   end
 end
