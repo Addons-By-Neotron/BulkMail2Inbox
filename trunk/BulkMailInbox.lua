@@ -303,7 +303,6 @@ function mod:SmartCancelTimer(name)
 end
 
 function mod:SmartScheduleTimer(name, override, method, timeout, ...)
-   print("*** scheduling timer: ", name)
    mod.timers = mod.timers or {}
    if mod.timers[name] and override then
       mod:CancelTimer(mod.timers[name], true)
