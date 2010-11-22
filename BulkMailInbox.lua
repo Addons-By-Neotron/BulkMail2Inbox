@@ -358,15 +358,15 @@ function mod:TakeNextItemFromMailbox()
 	 else
 	    TakeInboxMoney(curIndex)
 	 end
-	 self:SmartScheduleEvent('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 0.5)
-	 self:SmartScheduleEvent('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.5)
+	 self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 0.5)
+	 self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.5)
 	 return
       elseif not cashOnly and cod == 0 then
 	 cleanPass = false
 	 if not invFull then
 	    TakeInboxItem(curIndex, curAttachIndex)
-	    self:SmartScheduleEvent('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 0.5)
-	    self:SmartScheduleEvent('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.5)
+	    self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 0.5)
+	    self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.5)
 	    return
 	 end
       end
