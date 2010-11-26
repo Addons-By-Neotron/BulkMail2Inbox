@@ -20,10 +20,10 @@ local LD       = LibStub("LibDropdown-1.0")
 
 local _G = _G
 local fmt = string.format
+local lower = string.lower
 
-
---local sortFields, markTable  -- tables
-local ibIndex, ibAttachIndex, inboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull  -- variables
+local sortFields, markTable  -- tables
+local ibIndex, ibAttachIndex, numInboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull, filterText -- variables
 
 --[[----------------------------------------------------------------------------
 Table Handling
@@ -94,19 +94,30 @@ local function _isAHSentMail(subject)
    end
 end
 
+local function _matchesFilter(text)
+   if not filterText or filterText:len() == 0 then
+      return true
+   end
+   return text:lower():find(filterText, 1, true)
+end
+
 local function inboxCacheBuild()
+   local start = GetTime()
    for k in ipairs(inboxCache) do inboxCache[k] = del(inboxCache[k]) end
-   inboxCash, inboxItems = 0, 0
+   inboxCash, numInboxItems = 0, 0
    for i = 1, GetInboxNumItems() do
       local _, _, sender, subject, money, cod, daysLeft, numItems, _, wasReturned, _, canReply, isGM = GetInboxHeaderInfo(i)
       if money > 0 then
-	 -- Contributed by Scott Centoni
-	 local _, itemName = GetInboxInvoiceInfo(i)
-	 table.insert(inboxCache, newHash(
-			 'index', i, 'sender', sender, 'bmid', daysLeft..subject..0, 'returnable', not wasReturned, 'cod', cod,
-			 'daysLeft', daysLeft, 'itemLink', itemName and ITEM_SOLD_COLON..' '..itemName or L["Cash"], 'money', money, 'texture', "Interface\\Icons\\INV_Misc_Coin_01"
-		   ))
-	 inboxCash = inboxCash + money
+	 local title = itemName and ITEM_SOLD_COLON..' '..itemName or L["Cash"]
+	 if _matchesFilter(title) then
+	    -- Contributed by Scott Centoni
+	    local _, itemName = GetInboxInvoiceInfo(i)
+	    table.insert(inboxCache, newHash(
+			    'index', i, 'sender', sender, 'bmid', daysLeft..subject..0, 'returnable', not wasReturned, 'cod', cod,
+			    'daysLeft', daysLeft, 'itemLink', itemName and ITEM_SOLD_COLON..' '..itemName or L["Cash"], 'money', money, 'texture', "Interface\\Icons\\INV_Misc_Coin_01"
+		      ))
+	    inboxCash = inboxCash + money
+	 end
       end
       if numItems then
 	 local canReturnItem = not wasReturned
@@ -114,17 +125,16 @@ local function inboxCacheBuild()
 	    canReturnItem = false
 	 end
 	 for j=1, ATTACHMENTS_MAX_SEND do
-	    if GetInboxItem(i,j) then
+	    if GetInboxItem(i,j) and _matchesFilter(GetInboxItem(i, j)) then
 	       table.insert(inboxCache, newHash(
 			       'index', i, 'attachment', j, 'sender', sender, 'bmid', daysLeft..subject..j, 'returnable', canReturnItem, 'cod', cod,
 			       'daysLeft', daysLeft, 'itemLink', GetInboxItemLink(i,j), 'qty', select(3, GetInboxItem(i,j)), 'texture', (select(2, GetInboxItem(i,j)))
 			 ))
-	       inboxItems = inboxItems + 1
+	       numInboxItems = numInboxItems + 1
 	    end
 	 end
       end
    end
-
    table.sort(inboxCache, _sortInboxFunc)
 end
 
@@ -283,6 +293,7 @@ function mod:MAIL_CLOSED()
    GameTooltip:Hide()
    self:UnhookAll()
 end
+
 BulkMailInbox.PLAYER_ENTERING_WORLD = BulkMailInbox.MAIL_CLOSED  -- MAIL_CLOSED doesn't get called if, for example, the player accepts a port with the mail window open
 
 function mod:UI_ERROR_MESSAGE(event, msg)  -- prevent infinite loop when inventory is full
@@ -460,15 +471,23 @@ local function _addIndentedCell(tooltip, text, indentation, func, arg)
    return y, x
 end
 
-local function _addColspanCell(tooltip, text, colspan, func, arg)
-   y = tooltip:AddLine()
+local function _addColspanCell(tooltip, text, colspan, func, arg, y)
+   y = y or tooltip:AddLine()
    tooltip:SetCell(y, 1, text, tooltip:GetFont(), "LEFT", colspan)
    if func then
       tooltip:SetLineScript(y, "OnMouseUp", func, true)
+   else
+      tooltip:SetLineScript(y, "OnMouseUp", nil)
    end
+   return y
 end
 
 function mod:HideInboxGUI()
+   if mod._toolbar then
+      mod._toolbar:Hide()
+      mod._toolbar:SetParent(nil)
+   end
+
    local tooltip = mod.inboxGUI
    if tooltip then
       tooltip:EnableMouse(false)
@@ -477,9 +496,11 @@ function mod:HideInboxGUI()
       tooltip:SetMovable(false)
       tooltip:RegisterForDrag()
       tooltip:SetFrameStrata("TOOLTIP")
+      tooltip.moved = nil
       QTIP:Release(tooltip)
       mod.inboxGUI = nil
    end
+   mod._wantGui = nil
 end
 
 function mod:RefreshInboxGUI()
@@ -487,6 +508,7 @@ function mod:RefreshInboxGUI()
    if not mod.db.char.inboxUI then return end
    inboxCacheBuild()
    if mod.inboxGUI then
+      -- Rebuild it since it's visible
       mod:ShowInboxGUI()
    end
 end
@@ -539,50 +561,123 @@ local function _onEnterFunc(frame, info)  -- contributed by bigzero
    frame:SetScript("OnKeyUp", _toggleCompareItem)
 end
 
-
-local function _onMouseUpFunc(frame, info)
-   if not IsModifierKeyDown() then
-      if info.bmid then 
-	 markTable[info.bmid] = not markTable[info.bmid] and true or nil
-	 mod:RefreshInboxGUI()
-      end
-   elseif info.index and info.attachment then
-      mod:InboxFrame_OnClick(nil, info.index, info.attachment)
-   elseif info.index and info.money then
-      mod:InboxFrame_OnClick(nil, info.index, info.money)
-   end
+local function _createButton(title, parent, onclick, anchorTo, xoffset)
+   local buttons = mod.buttons or {}
+   mod.buttons = buttons
+   
+   local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+   button:SetText(title)
+   button:SetWidth(25)
+   button:SetHeight(20)
+   button:SetScript("OnClick", onclick)
+   buttons[title] = button
+   button:SetPoint("RIGHT", anchorTo, "LEFT", xoffset, 0)
+   return button
 end
 
-function mod:ShowInboxGUI()
-   if not mod.db.char.inboxUI then return end
-   if not inboxCache or not next(inboxCache) then
-      inboxCacheBuild()
-   end
+local function _createOrAttachSearchBar(tooltip)
+   local toolbar = mod._toolbar
+   if not toolbar then
+      toolbar = CreateFrame("Frame", nil, UIParent)
+      toolbar:SetHeight(35)
 
-   local tooltip = mod.inboxGUI
-   if not tooltip then
-      tooltip = QTIP:Acquire("BulkMailInboxGUI")
-      tooltip:EnableMouse(true)
-      tooltip:SetScript("OnDragStart", tooltip.StartMoving)
-      tooltip:SetScript("OnDragStop", tooltip.StopMovingOrSizing)
-      tooltip:RegisterForDrag("LeftButton")
-      tooltip:SetMovable(true)
-      tooltip:SetColumnLayout(7, "LEFT", "LEFT", "CENTER", "CENTER", "CENTER", "CENTER", "CENTER")
-      tooltip:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", -5, 40)
-      mod.inboxGUI = tooltip
+      local button =  CreateFrame("Button", nil, tooltip, "UIPanelCloseButton")
+      button:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0)
+      button:SetScript("OnClick", function() mod:HideInboxGUI() end)
+      
+      button = _createButton("CS", toolbar, function() wipe(markTable) self:RefreshInboxGUI() end, button, -2)
+      button = _createButton("TS", toolbar, function() takeAll(false, true) end, button, -2)
+      button = _createButton("TC", toolbar, function() takeAll(true) end, button, -2)
+      button = _createButton("TA", toolbar, function() takeAll() end, button, -2)      
+      
+      local editBox = CreateFrame("EditBox", "BulkMailInboxSearchFilterEditBox", toolbar, "InputBoxTemplate")
+      editBox:SetWidth(100)
+      editBox:SetHeight(30);
+      editBox:SetScript("OnTextChanged",
+			function()
+			   filterText = editBox:GetText():lower()
+			   wipe(markTable)
+			   mod:RefreshInboxGUI()
+			end)
+      
+      editBox:SetScript("OnEscapePressed", editBox.ClearFocus)
+      editBox:SetScript("OnEnterPressed", editBox.ClearFocus)
+      
+      editBox:SetAutoFocus(false)
+      editBox:SetPoint("RIGHT", button, "LEFT", -10, 0);
+
+      local text = toolbar:CreateFontString(nil, nil, "GameFontNormal")
+      text:SetTextColor(1,1,1,1)
+      text:SetText(color(L["Search"]..": ", "ffd200"))
+      text:SetPoint("RIGHT", editBox, "LEFT", -5, 0)
+
+      local text = toolbar:CreateFontString(nil, nil, "GameTooltipHeaderText")
+      text:SetTextColor(1,1,1,1)
+      text:SetText(color(L["Bulk Mail Inbox"], "ffd200"))
+      text:SetPoint("LEFT", toolbar, "LEFT", 5, 0)
+       
+
+      local backdrop = GameTooltip:GetBackdrop()
+      
+
+      toolbar:SetBackdrop(backdrop)
+   
+      if backdrop then
+	 toolbar:SetBackdropColor(GameTooltip:GetBackdropColor())
+	 toolbar:SetBackdropBorderColor(GameTooltip:GetBackdropBorderColor())
+      end
+
+      toolbar:EnableMouse(true)
+      toolbar:RegisterForDrag("LeftButton")
+      toolbar:SetMovable(true)
+      
+      mod._toolbar = toolbar
+   end
+   
+   toolbar:SetScript("OnDragStart", function() tooltip:StartMoving() end)
+   toolbar:SetScript("OnDragStop", function() tooltip.moved = true tooltip:StopMovingOrSizing() end)
+   
+   toolbar:ClearAllPoints()
+   toolbar:SetParent(tooltip)
+   
+   toolbar:SetPoint("BOTTOMLEFT", tooltip, "TOPLEFT", 0, -4)
+   toolbar:SetPoint("BOTTOMRIGHT", tooltip, "TOPRIGHT", 0, -4)
+
+   toolbar:Show()
+end
+      
+
+-- For pagination
+local MAX_ROWS = 80
+local startPage = 0
+
+
+-- This adds the header info, and next prev buttons if needed
+local function _addHeaderAndNavigation(tooltip, firstRow, lastRow)
+   local y = tooltip:AddLine();
+   if firstRow and lastRow then
+      tooltip:SetCell(y, 1, color(fmt(L["Inbox Items (%d mails, %s)"], GetInboxNumItems(), abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetFont(), "LEFT", 4)
+      tooltip:SetCell(y, 5, color(fmt(L["Item %d-%d of %d"], firstRow, lastRow, numInboxItems), "ffd200"), tooltip:GetFont(), "RIGHT", 3)
+	 
+      y = tooltip:AddLine();
+      if startPage > 0 then
+	 tooltip:SetCell(y, 1,  color("<- "..L["Previous Page"], "ffd200"), tooltip:GetFont(), "LEFT", 2)
+	 tooltip:SetCellScript(y, 1, "OnMouseUp", function() startPage = startPage - 1 mod:ShowInboxGUI() end)
+      end
+      
+      if lastRow < numInboxItems then
+	 tooltip:SetCell(y, 5,  color(L["Next Page"].." ->", "ffd200"), tooltip:GetFont(), "RIGHT", 3)
+	 tooltip:SetCellScript(y, 5, "OnMouseUp", function() startPage = startPage + 1 mod:ShowInboxGUI() end)
+      end
    else
-      tooltip:Clear()      
+      tooltip:SetCell(y, 1, color(fmt(L["Inbox Items (%d mails, %d items, %s)"], GetInboxNumItems(), numInboxItems, abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetFont(), "LEFT", 7)
    end
-
-
-   local y = tooltip:AddHeader();
-   tooltip:SetCell(y, 1, color(fmt(L["Bulk Mail Inbox -- Inbox Items (%d mails, %d items, %s)"], GetInboxNumItems(), inboxItems, abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetHeaderFont(), "CENTER", 7)
+   
    tooltip:AddLine(" ")
    local sel = function(str, col)
 		  return color(str, col == mod.db.char.sortField and "ffff7f" or "ffffff")
 	       end
-   y = tooltip:AddLine("", "", sel(L["Qty."], 2), sel(L["Returnable"], 3), sel(L["Sender"], 4), sel(L["TTL"], 5), sel(L["Mail #"], 6))
-   tooltip:SetCell(y, 1,  sel(L["Items (Inbox click actions apply)"], 1), tooltip:GetFont(), "LEFT", 2)
+   y = tooltip:AddLine("", sel(L["Items (Inbox click actions apply)"], 1), sel(L["Qty."], 2), sel(L["Returnable"], 3), sel(L["Sender"], 4), sel(L["TTL"], 5), sel(L["Mail #"], 6))
    local setSortFieldFunc = function(obj, field)
 			       if mod.db.char.sortField == field then
 				  mod.db.char.sortReversed = not mod.db.char.sortReversed and true or nil
@@ -592,52 +687,148 @@ function mod:ShowInboxGUI()
 			       end
 			       self:RefreshInboxGUI()
 			    end
-   tooltip:SetCellScript(y, 1, "OnMouseUp", setSortFieldFunc, 1)
-   tooltip:SetCellScript(y, 3, "OnMouseUp", setSortFieldFunc, 2)
-   tooltip:SetCellScript(y, 4, "OnMouseUp", setSortFieldFunc, 3)
-   tooltip:SetCellScript(y, 5, "OnMouseUp", setSortFieldFunc, 4)
-   tooltip:SetCellScript(y, 6, "OnMouseUp", setSortFieldFunc, 5) 
-   tooltip:SetCellScript(y, 7, "OnMouseUp", setSortFieldFunc, 6)
+   for i = 1,6 do 
+      tooltip:SetCellScript(y, i+1, "OnMouseUp", setSortFieldFunc, i)
+   end
+   tooltip:AddSeparator(2)
+end
 
+local function _adjustSizeAndPosition(tooltip)
+   tooltip:UpdateScrolling(UIParent:GetHeight() / tooltip:GetScale() * 0.7)
+   tooltip:SetClampedToScreen(true)
+
+   if not tooltip.moved then
+      -- only adjust point if user hasn't moved manually
+      tooltip:ClearAllPoints()
+      tooltip:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", -5, -40)
+   end
+end
+
+-- Update the clickability state of all buttons that toggle state
+local function _updateButtonStates(tooltip)
+   local hasMarked = next(markTable)
+   local markColor = hasMarked and "ffd200" or "7f7f7f"
+   
+   if hasMarked then
+      mod.buttons.CS:Enable()
+      mod.buttons.TS:Enable()
+   else
+      mod.buttons.CS:Disable()
+      mod.buttons.TS:Disable()
+   end
+   if inboxCash > 0 then
+      mod.buttons.TC:Enable();
+   else
+      mod.buttons.TC:Disable();
+   end
+  
+   mod.cells.takeSelected = _addColspanCell(tooltip, color(L["Take Selected"], markColor), 2, hasMarked and function() takeAll(false, true) end, nil, mod.cells.takeSelected)
+   mod.cells.clearSelected = _addColspanCell(tooltip, color(L["Clear Selected"], markColor), 2, hasMarked and function() wipe(markTable) self:RefreshInboxGUI() end, nil, mod.cells.clearSelected)
+
+   -- Re-set this or the tooltip freaks out.
+   _adjustSizeAndPosition(tooltip)
+end
+
+      
+function mod:ShowInboxGUI()
+   if not mod.db.char.inboxUI then return end
+   if not inboxCache or not next(inboxCache) then
+      inboxCacheBuild()
+   end
+
+   local tooltip = mod.inboxGUI
+
+   if not tooltip then
+      tooltip = QTIP:Acquire("BulkMailInboxGUI")
+      tooltip:EnableMouse(true)
+      tooltip:SetScript("OnDragStart", tooltip.StartMoving)
+      tooltip:SetScript("OnDragStop", function() tooltip.moved = true tooltip:StopMovingOrSizing() end)
+      tooltip:RegisterForDrag("LeftButton")
+      tooltip:SetMovable(true)
+      tooltip:SetColumnLayout(7, "LEFT", "LEFT", "CENTER", "CENTER", "CENTER", "CENTER", "CENTER")
+      mod.inboxGUI = tooltip
+      startPage = 0
+      tooltip:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", -5, -40)
+   else
+      tooltip:Clear()      
+   end
+   local y
+   _createOrAttachSearchBar(tooltip)
+   
    local markedColor = function(str, marked, col)
 			  return color(str, col == mod.db.char.sortField and "ffff7f" or (marked and "ffffff" or "ffd200"))
 		       end
-   if inboxCache and next(inboxCache) then
-      for i, info in pairs(inboxCache) do
+   if inboxCache and #inboxCache > 0 then
+      local firstRow, lastRow
+      if numInboxItems > MAX_ROWS then
+	 firstRow = MAX_ROWS * startPage + 1
+	 while firstRow > numInboxItems and startPage >= 0 do
+	    startPage = startPage - 1
+	    firstRow = MAX_ROWS * startPage
+	 end
+	 lastRow = math.min(firstRow+MAX_ROWS, numInboxItems)
+
+	 y = tooltip:AddLine()
+	 _addHeaderAndNavigation(tooltip, firstRow, lastRow)
+      else
+	 startPage = 0
+	 firstRow = 1
+	 lastRow = numInboxItems
+	 _addHeaderAndNavigation(tooltip)
+      end
+      for i = firstRow, lastRow do
+	 local info = inboxCache[i]
 	 local isMarked = markTable[info.bmid]
 	 local itemText = info.itemLink or L["Cash"]
 	 if info.texture then
 	    itemText = fmt("|T%s:18|t%s", info.texture, itemText)
 	 end
-	 y = tooltip:AddLine(isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", 
+	 y = tooltip:AddLine("", 
 			     itemText,
 			     markedColor(info.money and abacus:FormatMoneyFull(info.money) or info.qty, isMarked, 2), 
 			     markedColor(info.returnable and L["Yes"] or L["No"], isMarked, 3), 
 			     markedColor(info.sender, isMarked, 4), 
 			     markedColor(fmt("%0.1f", info.daysLeft), isMarked, 5), 
 			     markedColor(info.index, isMarked, 6))
-	 tooltip:SetLineScript(y, "OnMouseUp", _onMouseUpFunc, info)
+
+	 tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, 15, 15)
+	 
+	 tooltip:SetLineScript(y, "OnMouseUp", function(frame, line)
+						  if not IsModifierKeyDown() then
+						     if info.bmid then 
+							markTable[info.bmid] = not markTable[info.bmid] and true or nil
+							tooltip:SetCell(line, 1, markTable[info.bmid] and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, 15, 15)
+							_updateButtonStates(tooltip)
+						     end
+						  elseif info.index and info.attachment then
+						     mod:InboxFrame_OnClick(nil, info.index, info.attachment)
+						  elseif info.index and info.money then
+						     mod:InboxFrame_OnClick(nil, info.index, info.money)
+						  end
+					       end, y)
 	 tooltip:SetLineScript(y, "OnEnter", _onEnterFunc, info)
 	 tooltip:SetLineScript(y, "OnLeave", _onLeaveFunc, info)
       end
    else
-      tooltip:AddLine( "  "..L["No items"], " ", "    ", "    ", "  ", "  ", "   ")
+      _addHeaderAndNavigation(tooltip)
+      tooltip:AddLine(" ", L["No items"])
    end
-   local hasMarked = next(markTable)
-   local markColor = hasMarked and "ffd200" or "7f7f7f"
-
    tooltip:AddLine(" ")
+
+   local cells = mod.cells or {}
+   wipe(cells)
+   mod.cells = cells
 
    _addColspanCell(tooltip, color(L["Take All"], "ffd200"), 7, function() takeAll() end)
    _addColspanCell(tooltip, color(L["Take Cash"], inboxCash > 0 and "ffd200" or "7f7f7f"), 7, inboxCash > 0 and function() takeAll(true) end)
-   _addColspanCell(tooltip, color(L["Take Selected"], markColor), 7, hasMarked and function() takeAll(false, true) end)
-   _addColspanCell(tooltip, color(L["Clear Selected"], markColor), 7, hasMarked and function() for i in pairs(markTable) do markTable[i] = nil end self:RefreshInboxGUI() end)
+   _updateButtonStates(tooltip)
    _addColspanCell(tooltip, color(L["Close"], "ffd200"), 7, mod.HideInboxGUI, mod)
 
 
    tooltip:SetFrameStrata("FULLSCREEN")
-   -- set max height to be 85% of the screen height
-   tooltip:UpdateScrolling(UIParent:GetHeight() / tooltip:GetScale() * 0.85)
+   -- set max height to be 80% of the screen height
+   _adjustSizeAndPosition(tooltip)
+   
    tooltip:Show()
 end
 
