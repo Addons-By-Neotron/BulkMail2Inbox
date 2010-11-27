@@ -581,15 +581,15 @@ local function _createOrAttachSearchBar(tooltip)
       toolbar = CreateFrame("Frame", nil, UIParent)
       toolbar:SetHeight(35)
 
-      local button =  CreateFrame("Button", nil, tooltip, "UIPanelCloseButton")
+      local button =  CreateFrame("Button", nil, toolbar, "UIPanelCloseButton")
       button:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0)
       button:SetScript("OnClick", function() mod:HideInboxGUI() end)
-      
+
       button = _createButton("CS", toolbar, function() wipe(markTable) self:RefreshInboxGUI() end, button, -2)
       button = _createButton("TS", toolbar, function() takeAll(false, true) end, button, -2)
       button = _createButton("TC", toolbar, function() takeAll(true) end, button, -2)
       button = _createButton("TA", toolbar, function() takeAll() end, button, -2)      
-      
+
       local editBox = CreateFrame("EditBox", "BulkMailInboxSearchFilterEditBox", toolbar, "InputBoxTemplate")
       editBox:SetWidth(100)
       editBox:SetHeight(30);
@@ -633,7 +633,7 @@ local function _createOrAttachSearchBar(tooltip)
       
       mod._toolbar = toolbar
    end
-   
+
    toolbar:SetScript("OnDragStart", function() tooltip:StartMoving() end)
    toolbar:SetScript("OnDragStop", function() tooltip.moved = true tooltip:StopMovingOrSizing() end)
    
