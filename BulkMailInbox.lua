@@ -209,13 +209,13 @@ function mod:OnInitialize()
 	    name = L["Take All"], type = 'toggle',
 	    desc = L["Enable 'Take All' button in inbox."],
 	    get = function() return self.db.char.takeAll end,
-	    set = function(args,v) self.db.char.takeAll = v; self:UpdateTakeAllButton() end,
+	    set = function(args,v) self.db.char.takeAll = v self:UpdateTakeAllButton() end,
 	 },
 	 gui = {
 	    name = L["Show Inbox GUI"], type = 'toggle',
 	    desc = L["Show the Inbox Items GUI"],
 	    get = function() return self.db.char.inboxUI end,
-	    set = function(args,v) self.db.char.inboxUI = v; self:RefreshInboxGUI() end,
+	    set = function(args,v) self.db.char.inboxUI = v self:RefreshInboxGUI() end,
 	 },
       },
    }
@@ -302,7 +302,7 @@ function mod:UI_ERROR_MESSAGE(event, msg)  -- prevent infinite loop when invento
    end
 end
 
--- Take next inbox item or money; skip past CoD items and letters.
+-- Take next inbox item or money skip past CoD items and letters.
 local prevSubject = ''
 
 function mod:SmartCancelTimer(name)
@@ -335,6 +335,7 @@ function mod:TakeNextItemFromMailbox()
 
    local numMails = GetInboxNumItems()
    cashOnly = cashOnly or invFull
+
    if ibIndex <= 0 then
       if cleanPass or numMails <= 0 then
 	 takeAllInProgress = false
@@ -368,25 +369,29 @@ function mod:TakeNextItemFromMailbox()
       return self:TakeNextItemFromMailbox()
    end
 
+   local actionTaken 
    if not string.find(subject, "Sale Pending") then 
       if curAttachIndex == 0 and money > 0 then
 	 cleanPass = false
+	 actionTaken = true
 	 TakeInboxMoney(curIndex)
       elseif not cashOnly and cod == 0 then
 	 cleanPass = false
 	 if not invFull then
 	    TakeInboxItem(curIndex, curAttachIndex)
+	    actionTaken = true
 	 end
       end
    end
 
-   if not cleanPass then
+   if actionTaken then
+      -- Since we did something, we'll add a delay to prevent erroring out
       self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
       self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
-      return
+   else
+      -- We didn't take any items so let's move on
+      self:TakeNextItemFromMailbox()
    end
-   -- Tail recurse
-   return self:TakeNextItemFromMailbox()
 end
 
 --[[----------------------------------------------------------------------------
@@ -461,6 +466,10 @@ end
 --[[----------------------------------------------------------------------------
 QTip GUI
 ------------------------------------------------------------------------------]]
+-- For pagination
+local MAX_ROWS = 80
+local startPage = 0
+
 
 local function _addIndentedCell(tooltip, text, indentation, func, arg)
    local y, x = tooltip:AddLine()
@@ -530,10 +539,10 @@ local function _toggleCompareItem()
       -- There appears to be no other way. Sigh.
       if ( GameTooltip.shoppingTooltips ) then
 	 for _, frame in pairs(GameTooltip.shoppingTooltips) do
-	    frame:Hide();
+	    frame:Hide()
 	 end
       end
-      GameTooltip.comparing = false;
+      GameTooltip.comparing = false
    end
 end
 
@@ -579,20 +588,61 @@ local function _createOrAttachSearchBar(tooltip)
    local toolbar = mod._toolbar
    if not toolbar then
       toolbar = CreateFrame("Frame", nil, UIParent)
-      toolbar:SetHeight(35)
+      toolbar:SetHeight(60)
 
-      local button =  CreateFrame("Button", nil, toolbar, "UIPanelCloseButton")
-      button:SetPoint("RIGHT", toolbar, "RIGHT", 0, 0)
-      button:SetScript("OnClick", function() mod:HideInboxGUI() end)
+      local closeButton =  CreateFrame("Button", "BulkMailInboxToolbarCloseButton", toolbar, "UIPanelCloseButton")
+      closeButton:SetPoint("TOPRIGHT", toolbar, "TOPRIGHT", 0, 0)
+      closeButton:SetScript("OnClick", function() mod:HideInboxGUI() end)
 
-      button = _createButton("CS", toolbar, function() wipe(markTable) self:RefreshInboxGUI() end, button, -2)
+      
+      local nextButton = CreateFrame("Button", nil, toolbar)
+      nextButton:SetNormalTexture([[Interface\Buttons\UI-SpellbookIcon-NextPage-Up]])
+      nextButton:SetPushedTexture([[Interface\Buttons\UI-SpellbookIcon-NextPage-Down]])
+      nextButton:SetDisabledTexture([[Interface\Buttons\UI-SpellbookIcon-NextPage-Disabled]])
+      nextButton:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]], "ADD")
+      nextButton:SetPoint("TOP", closeButton, "BOTTOM", 0, 5)
+      nextButton:SetScript("OnClick", function() startPage = startPage + 1 mod:ShowInboxGUI() end)
+      nextButton:SetWidth(25)
+      nextButton:SetHeight(25)
+      
+      local prevButton = CreateFrame("Button", nil, toolbar)
+      prevButton:SetNormalTexture([[Interface\Buttons\UI-SpellbookIcon-PrevPage-Up]])
+      prevButton:SetPushedTexture([[Interface\Buttons\UI-SpellbookIcon-PrevPage-Down]])
+      prevButton:SetDisabledTexture([[Interface\Buttons\UI-SpellbookIcon-PrevPage-Disabled]])
+      prevButton:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]], "ADD")
+      prevButton:SetPoint("RIGHT", nextButton, "LEFT", 0, 0)
+      prevButton:SetScript("OnClick", function() startPage = startPage - 1 mod:ShowInboxGUI() end)
+      prevButton:SetWidth(25)
+      prevButton:SetHeight(25)
+      
+
+      local pageText = toolbar:CreateFontString(nil, nil, "GameFontNormalSmall")
+      pageText:SetTextColor(1,210/255.0,0,1)
+      pageText:SetPoint("RIGHT", prevButton, "LEFT", 0, 0)
+      toolbar.pageText = pageText
+
+      
+      local itemText = toolbar:CreateFontString(nil, nil, "GameFontNormalSmall")
+      itemText:SetTextColor(1,210/255.0,0,1)
+      itemText:SetPoint("TOPRIGHT", pageText, "TOPLEFT", 0, 0)
+      itemText:SetPoint("BOTTOMRIGHT", pageText, "BOTTOMLEFT", 0, 0)
+      itemText:SetPoint("LEFT", toolbar, "LEFT", 5, 0)
+      itemText:SetJustifyH("LEFT")
+      toolbar.itemText = itemText
+      
+
+      button = _createButton("CS", toolbar, function() wipe(markTable) self:RefreshInboxGUI() end, closeButton, -2)
       button = _createButton("TS", toolbar, function() takeAll(false, true) end, button, -2)
       button = _createButton("TC", toolbar, function() takeAll(true) end, button, -2)
       button = _createButton("TA", toolbar, function() takeAll() end, button, -2)      
 
+      mod.buttons.prev = prevButton
+      mod.buttons.next = nextButton
+      mod.buttons.close = closebuttons
+
       local editBox = CreateFrame("EditBox", "BulkMailInboxSearchFilterEditBox", toolbar, "InputBoxTemplate")
       editBox:SetWidth(100)
-      editBox:SetHeight(30);
+      editBox:SetHeight(30)
       editBox:SetScript("OnTextChanged",
 			function()
 			   filterText = editBox:GetText():lower()
@@ -604,18 +654,20 @@ local function _createOrAttachSearchBar(tooltip)
       editBox:SetScript("OnEnterPressed", editBox.ClearFocus)
       
       editBox:SetAutoFocus(false)
-      editBox:SetPoint("RIGHT", button, "LEFT", -10, 0);
+      editBox:SetPoint("RIGHT", button, "LEFT", -10, 0)
 
       local text = toolbar:CreateFontString(nil, nil, "GameFontNormal")
-      text:SetTextColor(1,1,1,1)
-      text:SetText(color(L["Search"]..": ", "ffd200"))
+      text:SetTextColor(1,210/255.0,0,1)
+      text:SetText(L["Search"]..": ")
       text:SetPoint("RIGHT", editBox, "LEFT", -5, 0)
 
-      local text = toolbar:CreateFontString(nil, nil, "GameTooltipHeaderText")
-      text:SetTextColor(1,1,1,1)
-      text:SetText(color(L["Bulk Mail Inbox"], "ffd200"))
-      text:SetPoint("LEFT", toolbar, "LEFT", 5, 0)
-       
+      local titleText = toolbar:CreateFontString(nil, nil, "GameTooltipHeaderText")
+      titleText:SetTextColor(1,210/255.0,0,1)
+      titleText:SetText(L["Bulk Mail Inbox"])
+      titleText:SetPoint("TOPRIGHT", text, "TOPLEFT", -5, 0)
+      titleText:SetPoint("BOTTOMRIGHT", text, "BOTTOMLEFT", -5, 0)
+      titleText:SetPoint("LEFT", toolbar, "LEFT", 5, 0)
+      
 
       local backdrop = GameTooltip:GetBackdrop()
       
@@ -647,33 +699,34 @@ local function _createOrAttachSearchBar(tooltip)
 end
       
 
--- For pagination
-local MAX_ROWS = 80
-local startPage = 0
-
 
 -- This adds the header info, and next prev buttons if needed
 local function _addHeaderAndNavigation(tooltip, firstRow, lastRow, totalRows)
-   local y = tooltip:AddLine();
    if firstRow and lastRow then
-      tooltip:SetCell(y, 1, color(fmt(L["Inbox Items (%d mails, %s)"], GetInboxNumItems(), abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetFont(), "LEFT", 4)
-      tooltip:SetCell(y, 5, color(fmt(L["Item %d-%d of %d"], firstRow, lastRow, totalRows), "ffd200"), tooltip:GetFont(), "RIGHT", 3)
+      mod._toolbar.itemText:SetText(fmt(L["Inbox Items (%d mails, %s)"], GetInboxNumItems(), abacus:FormatMoneyShort(inboxCash)))
+      mod._toolbar.pageText:SetText(fmt(L["Item %d-%d of %d"], firstRow, lastRow, totalRows))
+
+      mod.buttons.next:Show()
+      mod.buttons.prev:Show()
 	 
-      y = tooltip:AddLine();
       if startPage > 0 then
-	 tooltip:SetCell(y, 1,  color("<- "..L["Previous Page"], "ffd200"), tooltip:GetFont(), "LEFT", 2)
-	 tooltip:SetCellScript(y, 1, "OnMouseUp", function() startPage = startPage - 1 mod:ShowInboxGUI() end)
+	 mod.buttons.prev:Enable()
+      else
+	 mod.buttons.prev:Disable()
       end
       
       if lastRow < totalRows then
-	 tooltip:SetCell(y, 5,  color(L["Next Page"].." ->", "ffd200"), tooltip:GetFont(), "RIGHT", 3)
-	 tooltip:SetCellScript(y, 5, "OnMouseUp", function() startPage = startPage + 1 mod:ShowInboxGUI() end)
+	 mod.buttons.next:Enable()
+      else
+	 mod.buttons.next:Disable()
       end
    else
-      tooltip:SetCell(y, 1, color(fmt(L["Inbox Items (%d mails, %d items, %s)"], GetInboxNumItems(), numInboxItems, abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetFont(), "LEFT", 7)
+      mod.buttons.next:Hide()
+      mod.buttons.prev:Hide()
+      mod._toolbar.pageText:SetText("")
+      mod._toolbar.itemText:SetText(fmt(L["Inbox Items (%d mails, %d items, %s)"], GetInboxNumItems(), numInboxItems, abacus:FormatMoneyShort(inboxCash)));
    end
    
-   tooltip:AddLine(" ")
    local sel = function(str, col)
 		  return color(str, col == mod.db.char.sortField and "ffff7f" or "ffffff")
 	       end
@@ -717,9 +770,9 @@ local function _updateButtonStates(tooltip)
       mod.buttons.TS:Disable()
    end
    if inboxCash > 0 then
-      mod.buttons.TC:Enable();
+      mod.buttons.TC:Enable()
    else
-      mod.buttons.TC:Disable();
+      mod.buttons.TC:Disable()
    end
   
    mod.cells.takeSelected = _addColspanCell(tooltip, color(L["Take Selected"], markColor), 2, hasMarked and function() takeAll(false, true) end, nil, mod.cells.takeSelected)
@@ -768,8 +821,6 @@ function mod:ShowInboxGUI()
 	    firstRow = MAX_ROWS * startPage
 	 end
 	 lastRow = math.min(firstRow+MAX_ROWS, totalRows)
-
-	 y = tooltip:AddLine()
 	 _addHeaderAndNavigation(tooltip, firstRow, lastRow, totalRows)
       else
 	 startPage = 0
