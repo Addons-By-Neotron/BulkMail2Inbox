@@ -87,7 +87,7 @@ local AHReceivedPatterns = {
 local function _isAHSentMail(subject)
    if subject then
       for key,pattern in ipairs(AHReceivedPatterns) do
-	 if subject:find(pattern) then
+	 if subject:find(pattern) ~= nil then
 	    return true
 	 end
       end
@@ -98,7 +98,7 @@ local function _matchesFilter(text)
    if not filterText or filterText:len() == 0 then
       return true
    end
-   return text:lower():find(filterText, 1, true)
+   return text:lower():find(filterText, 1, true) ~= nil
 end
 
 local function inboxCacheBuild()
@@ -108,13 +108,13 @@ local function inboxCacheBuild()
    for i = 1, GetInboxNumItems() do
       local _, _, sender, subject, money, cod, daysLeft, numItems, _, wasReturned, _, canReply, isGM = GetInboxHeaderInfo(i)
       if money > 0 then
+	 local _, itemName = GetInboxInvoiceInfo(i)
 	 local title = itemName and ITEM_SOLD_COLON..' '..itemName or L["Cash"]
 	 if _matchesFilter(title) then
 	    -- Contributed by Scott Centoni
-	    local _, itemName = GetInboxInvoiceInfo(i)
 	    table.insert(inboxCache, newHash(
 			    'index', i, 'sender', sender, 'bmid', daysLeft..subject..0, 'returnable', not wasReturned, 'cod', cod,
-			    'daysLeft', daysLeft, 'itemLink', itemName and ITEM_SOLD_COLON..' '..itemName or L["Cash"], 'money', money, 'texture', "Interface\\Icons\\INV_Misc_Coin_01"
+			    'daysLeft', daysLeft, 'itemLink', title, 'money', money, 'texture', "Interface\\Icons\\INV_Misc_Coin_01"
 		      ))
 	    inboxCash = inboxCash + money
 	 end
@@ -653,11 +653,11 @@ local startPage = 0
 
 
 -- This adds the header info, and next prev buttons if needed
-local function _addHeaderAndNavigation(tooltip, firstRow, lastRow)
+local function _addHeaderAndNavigation(tooltip, firstRow, lastRow, totalRows)
    local y = tooltip:AddLine();
    if firstRow and lastRow then
       tooltip:SetCell(y, 1, color(fmt(L["Inbox Items (%d mails, %s)"], GetInboxNumItems(), abacus:FormatMoneyShort(inboxCash)), "ffd200"), tooltip:GetFont(), "LEFT", 4)
-      tooltip:SetCell(y, 5, color(fmt(L["Item %d-%d of %d"], firstRow, lastRow, numInboxItems), "ffd200"), tooltip:GetFont(), "RIGHT", 3)
+      tooltip:SetCell(y, 5, color(fmt(L["Item %d-%d of %d"], firstRow, lastRow, totalRows), "ffd200"), tooltip:GetFont(), "RIGHT", 3)
 	 
       y = tooltip:AddLine();
       if startPage > 0 then
@@ -665,7 +665,7 @@ local function _addHeaderAndNavigation(tooltip, firstRow, lastRow)
 	 tooltip:SetCellScript(y, 1, "OnMouseUp", function() startPage = startPage - 1 mod:ShowInboxGUI() end)
       end
       
-      if lastRow < numInboxItems then
+      if lastRow < totalRows then
 	 tooltip:SetCell(y, 5,  color(L["Next Page"].." ->", "ffd200"), tooltip:GetFont(), "RIGHT", 3)
 	 tooltip:SetCellScript(y, 5, "OnMouseUp", function() startPage = startPage + 1 mod:ShowInboxGUI() end)
       end
@@ -760,20 +760,21 @@ function mod:ShowInboxGUI()
 		       end
    if inboxCache and #inboxCache > 0 then
       local firstRow, lastRow
-      if numInboxItems > MAX_ROWS then
+      local totalRows = #inboxCache
+      if totalRows > MAX_ROWS then
 	 firstRow = MAX_ROWS * startPage + 1
-	 while firstRow > numInboxItems and startPage >= 0 do
+	 while firstRow > totalRows and startPage >= 0 do
 	    startPage = startPage - 1
 	    firstRow = MAX_ROWS * startPage
 	 end
-	 lastRow = math.min(firstRow+MAX_ROWS, numInboxItems)
+	 lastRow = math.min(firstRow+MAX_ROWS, totalRows)
 
 	 y = tooltip:AddLine()
-	 _addHeaderAndNavigation(tooltip, firstRow, lastRow)
+	 _addHeaderAndNavigation(tooltip, firstRow, lastRow, totalRows)
       else
 	 startPage = 0
 	 firstRow = 1
-	 lastRow = numInboxItems
+	 lastRow = totalRows
 	 _addHeaderAndNavigation(tooltip)
       end
       for i = firstRow, lastRow do

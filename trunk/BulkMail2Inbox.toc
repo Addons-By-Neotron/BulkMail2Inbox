@@ -2,7 +2,7 @@
 ## Title: Bulk Mail Inbox
 ## Notes: Bulk mail reception made really easy
 ## Notes-ruRU: BulkMail - получение почты делает на много легче
-## Version: 4.0.1
+## Version: 4.0.2
 ## Author: NeoTron
 ## X-Credits: hyperactiveChipmunk
 ## X-Category: Mail
