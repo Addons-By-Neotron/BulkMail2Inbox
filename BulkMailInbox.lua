@@ -9,13 +9,14 @@ local L        = LibStub("AceLocale-3.0"):GetLocale("BulkMailInbox", false)
 
 BulkMailInbox.L = L
 
-local abacus   = LibStub("LibAbacus-3.0")
-local QTIP     = LibStub("LibQTip-1.0")
-local AC       = LibStub("AceConfig-3.0")
-local ACD      = LibStub("AceConfigDialog-3.0")
-local DB       = LibStub("AceDB-3.0")
-local LDB      = LibStub("LibDataBroker-1.1", true)
-local LD       = LibStub("LibDropdown-1.0")
+local media  = LibStub("LibSharedMedia-3.0")
+local abacus = LibStub("LibAbacus-3.0")
+local QTIP   = LibStub("LibQTip-1.0")
+local AC     = LibStub("AceConfig-3.0")
+local ACD    = LibStub("AceConfigDialog-3.0")
+local DB     = LibStub("AceDB-3.0")
+local LDB    = LibStub("LibDataBroker-1.1", true)
+local LD     = LibStub("LibDropdown-1.0")
 
 
 local _G = _G
@@ -60,7 +61,7 @@ Local Processing
 local inboxCache = {}
 local function _sortInboxFunc(a,b)
    local sf = sortFields[BulkMailInbox.db.char.sortField]
-   if a and b then
+  if a and b then
       a, b = a[sf], b[sf]
       if sf == 'itemLink' then
 	 a = GetItemInfo(a) or a
@@ -177,6 +178,10 @@ function mod:OnInitialize()
 			  inboxUI = true,
 			  sortField = 1,
 		       },
+		       profile = {
+			  font = "Friz Quadrata TT",
+			  fontSize = 12
+		       }
 		    }, "Default")
    
    sortFields = { 'itemLink', 'qty', 'returnable', 'sender', 'daysLeft', 'index' }
@@ -217,6 +222,25 @@ function mod:OnInitialize()
 	    get = function() return self.db.char.inboxUI end,
 	    set = function(args,v) self.db.char.inboxUI = v self:RefreshInboxGUI() end,
 	 },
+	 font = {
+	    type = "select",
+	    dialogControl = "LSM30_Font",
+	    name = L["Font"],
+	    desc = L["Font used in the inbox list"],
+	    values = AceGUIWidgetLSMlists.font, 
+	    set = function(_,key) mod.db.profile.font = key  mod:RefreshInboxGUI() end,
+	    get = function() return mod.db.profile.font end,
+	    order = 1000,
+	 },
+	 fontsize = {
+	    type = "range",
+	    name = L["Font size"],
+	    min = 6, max = 30, step = 1,
+	    set = function(_,val) mod.db.profile.fontSize = val mod:RefreshInboxGUI() end,
+	    get = function() return mod.db.profile.fontSize end,
+	    order = 2000,
+	 },
+
       },
    }
 
@@ -668,7 +692,6 @@ local function _createOrAttachSearchBar(tooltip)
       titleText:SetPoint("BOTTOMRIGHT", text, "BOTTOMLEFT", -5, 0)
       titleText:SetPoint("LEFT", toolbar, "LEFT", 5, 0)
       
-
       local backdrop = GameTooltip:GetBackdrop()
       
 
@@ -805,9 +828,18 @@ function mod:ShowInboxGUI()
    else
       tooltip:Clear()      
    end
+   
+   
    local y
    _createOrAttachSearchBar(tooltip)
    
+   local fontName = media:Fetch("font", mod.db.profile.font)
+
+   local font = mod.font or CreateFont("MyNormalFontObject")
+   font:CopyFontObject(GameFontNormal)
+   font:SetFont(fontName, mod.db.profile.fontSize, "")
+   tooltip:SetFont(font)
+
    local markedColor = function(str, marked, col)
 			  return color(str, col == mod.db.char.sortField and "ffff7f" or (marked and "ffffff" or "ffd200"))
 		       end
