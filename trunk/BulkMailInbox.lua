@@ -835,7 +835,7 @@ function mod:ShowInboxGUI()
    
    local fontName = media:Fetch("font", mod.db.profile.font)
 
-   local font = mod.font or CreateFont("MyNormalFontObject")
+   local font = mod.font or CreateFont("BulkMailInboxFont")
    font:CopyFontObject(GameFontNormal)
    font:SetFont(fontName, mod.db.profile.fontSize, "")
    tooltip:SetFont(font)
