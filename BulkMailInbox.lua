@@ -274,7 +274,7 @@ function mod:OnInitialize()
       self.ldb =
 	 LDB:NewDataObject("BulkMailInbox",
 			   {
-			      type =  "launcher", 
+			      type =  "data source", 
 			      label = L["Bulk Mail Inbox"]..VERSION,
 			      icon = [[Interface\Addons\BulkMail2\icon]],
 			      tooltiptext = color(L["Bulk Mail Inbox"]..VERSION.."\n\n", "ffff00")..color(L["Hint:"].." "..L["Left click to open the config panel."].."\n"..
@@ -708,7 +708,7 @@ local function _createOrAttachSearchBar(tooltip)
       toolbar:SetHeight(49)
 
       local closeButton =  CreateFrame("Button", "BulkMailInboxToolbarCloseButton", toolbar, "UIPanelCloseButton")
-      closeButton:SetPoint("TOPRIGHT", toolbar, "TOPRIGHT", 0, 3)
+      closeButton:SetPoint("TOPRIGHT", toolbar, "TOPRIGHT", 0, 0)
       closeButton:SetScript("OnClick", function() mod:HideInboxGUI() end)
       _addTooltipToFrame(closeButton, L["Close"], L["Close the window and stop taking items from the inbox."])
       
@@ -717,7 +717,7 @@ local function _createOrAttachSearchBar(tooltip)
       nextButton:SetPushedTexture([[Interface\Buttons\UI-SpellbookIcon-NextPage-Down]])
       nextButton:SetDisabledTexture([[Interface\Buttons\UI-SpellbookIcon-NextPage-Disabled]])
       nextButton:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]], "ADD")
-      nextButton:SetPoint("TOP", closeButton, "BOTTOM", 0, 6)
+      nextButton:SetPoint("TOP", closeButton, "BOTTOM", 0, 9)
       nextButton:SetScript("OnClick", function() startPage = startPage + 1 mod:ShowInboxGUI() end)
       nextButton:SetWidth(25)
       nextButton:SetHeight(25)
@@ -890,21 +890,26 @@ end
 
 function mod:AdjustSizeAndPosition(tooltip)
 
-   tooltip:SetScale(mod.db.profile.scale)
-   tooltip:UpdateScrolling()--(UIParent:GetHeight() - 50) / tooltip:GetScale() )
-   tooltip:SetClampedToScreen(true)
-
-   -- Adjust the height so the toolbar fits
-   local tipHeight = tooltip:GetHeight() * tooltip:GetScale()
-   local barHeight = mod._toolbar:GetHeight() * tooltip:GetScale() + 10
-   if tipHeight + barHeight > UIParent:GetHeight() then
-      tooltip:SetHeight((UIParent:GetHeight() - barHeight-10)/tooltip:GetScale())
-   end
+   local scale = mod.db.profile.scale
    
-   -- Only adjust point if user hasn't moved manually. Maximizing the height...
+   tooltip:SetScale(scale)
    if not tooltip.moved then
+      -- this is needed to get the correct height for some reason.
       tooltip:ClearAllPoints()
-      tooltip:SetPoint("TOPLEFT", UIParent, "TOPLEFT", MailFrame:GetRight()/tooltip:GetScale(), -barHeight/tooltip:GetScale())
+      tooltip:SetPoint("TOP", UIParent, "TOP", 0, 0)
+   end
+   local barHeight = mod._toolbar:GetHeight()*scale
+   local uiHeight = UIParent:GetHeight()
+   tooltip:UpdateScrolling((uiHeight-barHeight+10)/scale)
+
+   -- Only adjust point if user hasn't moved manually. This puts it lined up with the mail window
+   -- or in the middle of the screen it's too large to fit from the top of the mail window and down
+   if not tooltip.moved then
+      local tipHeight = tooltip:GetHeight() * scale
+      tooltip:ClearAllPoints()
+      -- Calculate a good offset
+      local offx = math.min((uiHeight - tipHeight - barHeight)/2, uiHeight + 12 - MailFrame:GetTop()*MailFrame:GetScale())+barHeight
+      tooltip:SetPoint("TOPLEFT", UIParent, "TOPLEFT", MailFrame:GetRight()*MailFrame:GetScale()/scale, -offx/scale)
    end
 end
 
@@ -953,7 +958,6 @@ function mod:ShowInboxGUI()
       tooltip:SetColumnLayout(7, "LEFT", "LEFT", "CENTER", "CENTER", "CENTER", "CENTER", "CENTER")
       mod.inboxGUI = tooltip
       startPage = 0
-      tooltip:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", -5, -40)
    else
       tooltip:Clear()      
    end
