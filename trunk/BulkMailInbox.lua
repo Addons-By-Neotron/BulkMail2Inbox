@@ -1014,7 +1014,7 @@ function mod:ShowInboxGUI()
 	 if isMarked then
 	    tooltip:SetLineColor(y, 1, 1, 1, 0.3)
 	 end
-	 tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, mod.db.profile.fontsize + 3, mod.db.profile.fontsize + 3)
+	 tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, mod.db.profile.fontSize + 3, mod.db.profile.fontSize + 3)
 	 
 	 tooltip:SetLineScript(y, "OnMouseUp", function(frame, line)
 						  if not IsModifierKeyDown() then
