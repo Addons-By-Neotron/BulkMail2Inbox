@@ -949,7 +949,9 @@ function mod:ShowInboxGUI()
 
    if not tooltip then
       tooltip = QTIP:Acquire("BulkMailInboxGUI")
-      tooltip:SetScrollStep(100)
+      if tooltip.SetScrollStep then
+	 tooltip:SetScrollStep(100)
+      end
       tooltip:EnableMouse(true)
       tooltip:SetScript("OnDragStart", tooltip.StartMoving)
       tooltip:SetScript("OnDragStop", function() tooltip.moved = true tooltip:StopMovingOrSizing() end)
