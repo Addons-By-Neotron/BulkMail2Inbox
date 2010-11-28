@@ -253,15 +253,15 @@ function mod:OnInitialize()
 			      label = L["Bulk Mail Inbox"]..VERSION,
 			      icon = [[Interface\Addons\BulkMail2\icon]],
 			      tooltiptext = color(L["Bulk Mail Inbox"]..VERSION.."\n\n", "ffff00")..color(L["Hint:"].." "..L["Left click to open the config panel."].."\n"..
-											  L["Right click to open the config menu."], "ffd200"),
-			      OnClick = function(clickedframe, button)
-					   if button == "RightButton" then
-					      mod:OpenConfigMenu(clickedframe)
-					   else
-					      mod:ToggleConfigDialog()
-					   end
-					end,
-			   })
+													  L["Right click to open the config menu."], "ffd200"),
+			   OnClick = function(clickedframe, button)
+					if button == "RightButton" then
+					   mod:OpenConfigMenu(clickedframe)
+					else
+					   mod:ToggleConfigDialog()
+					end
+				     end,
+			})
    end
 
    self._mainConfig = self:OptReg(L["Bulk Mail Inbox"], self.opts,  { "bmi", "bulkmailinbox" })
@@ -388,17 +388,23 @@ function mod:TakeNextItemFromMailbox()
    else
       ibAttachIndex = ibAttachIndex + 1
    end
-
-   if curAttachIndex > 0 and not GetInboxItem(curIndex, curAttachIndex) or markOnly and not markTable[daysLeft..subject..curAttachIndex] then
+   local itemName = GetInboxItem(curIndex, curAttachIndex)
+   
+   if curAttachIndex > 0 and not itemName or markOnly and not markTable[daysLeft..subject..curAttachIndex] or itemName and not _matchesFilter(itemName)
+   then
       return self:TakeNextItemFromMailbox()
    end
 
    local actionTaken 
    if not string.find(subject, "Sale Pending") then 
       if curAttachIndex == 0 and money > 0 then
-	 cleanPass = false
-	 actionTaken = true
-	 TakeInboxMoney(curIndex)
+	 local _, itemName = GetInboxInvoiceInfo(curIndex)
+	 local title = itemName and ITEM_SOLD_COLON..' '..itemName or L["Cash"]
+	 if _matchesFilter(title) then
+	    cleanPass = false
+	    actionTaken = true
+	    TakeInboxMoney(curIndex)
+	 end
       elseif not cashOnly and cod == 0 then
 	 cleanPass = false
 	 if not invFull then
@@ -516,6 +522,10 @@ local function _addColspanCell(tooltip, text, colspan, func, arg, y)
 end
 
 function mod:HideInboxGUI()
+   mod:SmartCancelTimer('BMI_takeAll')
+   mod:SmartCancelTimer('BMI_TakeNextItem')
+   mod:SmartCancelTimer('BMI_RefreshInboxGUI')
+   
    if mod._toolbar then
       mod._toolbar:Hide()
       mod._toolbar:SetParent(nil)
@@ -639,13 +649,11 @@ local function _createOrAttachSearchBar(tooltip)
       prevButton:SetWidth(25)
       prevButton:SetHeight(25)
       
-
       local pageText = toolbar:CreateFontString(nil, nil, "GameFontNormalSmall")
       pageText:SetTextColor(1,210/255.0,0,1)
       pageText:SetPoint("RIGHT", prevButton, "LEFT", 0, 0)
       toolbar.pageText = pageText
 
-      
       local itemText = toolbar:CreateFontString(nil, nil, "GameFontNormalSmall")
       itemText:SetTextColor(1,210/255.0,0,1)
       itemText:SetPoint("TOPRIGHT", pageText, "TOPLEFT", 0, 0)
@@ -669,6 +677,10 @@ local function _createOrAttachSearchBar(tooltip)
       editBox:SetHeight(30)
       editBox:SetScript("OnTextChanged",
 			function()
+			   -- stop taking items when search terms change or we might
+			   -- end up taking stuff we didn't mean to take
+			   mod:SmartCancelTimer('BMI_takeAll')
+			   mod:SmartCancelTimer('BMI_TakeNextItem')
 			   filterText = editBox:GetText():lower()
 			   wipe(markTable)
 			   mod:RefreshInboxGUI()
@@ -684,7 +696,7 @@ local function _createOrAttachSearchBar(tooltip)
       text:SetTextColor(1,210/255.0,0,1)
       text:SetText(L["Search"]..": ")
       text:SetPoint("RIGHT", editBox, "LEFT", -5, 0)
-
+      
       local titleText = toolbar:CreateFontString(nil, nil, "GameTooltipHeaderText")
       titleText:SetTextColor(1,210/255.0,0,1)
       titleText:SetText(L["Bulk Mail Inbox"])
@@ -831,13 +843,16 @@ function mod:ShowInboxGUI()
    
    
    local y
-   _createOrAttachSearchBar(tooltip)
    
    local fontName = media:Fetch("font", mod.db.profile.font)
 
    local font = mod.font or CreateFont("BulkMailInboxFont")
    font:CopyFontObject(GameFontNormal)
    font:SetFont(fontName, mod.db.profile.fontSize, "")
+   mod.font = font
+
+   _createOrAttachSearchBar(tooltip)
+
    tooltip:SetFont(font)
 
    local markedColor = function(str, marked, col)
@@ -875,7 +890,7 @@ function mod:ShowInboxGUI()
 			     markedColor(fmt("%0.1f", info.daysLeft), isMarked, 5), 
 			     markedColor(info.index, isMarked, 6))
 
-	 tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, 15, 15)
+	 tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, mod.db.profile.fontsize + 3, mod.db.profile.fontsize + 3)
 	 
 	 tooltip:SetLineScript(y, "OnMouseUp", function(frame, line)
 						  if not IsModifierKeyDown() then
