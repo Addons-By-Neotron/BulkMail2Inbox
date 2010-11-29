@@ -65,8 +65,8 @@ local function _sortInboxFunc(a,b)
   if a and b then
       a, b = a[sf], b[sf]
       if sf == 'itemLink' then
-	 a = GetItemInfo(a) or a
-	 b = GetItemInfo(b) or b
+	 a = a and GetItemInfo(a) or a
+	 b = b and GetItemInfo(b) or b
       end
       a = type(a) == "nil" and 0 or type(a) == "boolean" and tostring(a) or a
       b = type(b) == "nil" and 0 or type(b) == "boolean" and tostring(b) or b
@@ -160,7 +160,7 @@ end
 Setup
 ------------------------------------------------------------------------------]]
 local function color(text, color)
-   return fmt("|cff%s%s|r", color, text)
+   return fmt("|cff%s%s|r", color, text or "")
 end
 
 function mod:OnInitialize()
