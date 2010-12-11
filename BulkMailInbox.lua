@@ -453,9 +453,10 @@ function mod:TakeNextItemFromMailbox()
       elseif not cashOnly and cod == 0 then
 	 cleanPass = invFull -- this ensures we'll die properly after a full mailbox iteration
 	 local inboxitem = GetInboxItemLink(curIndex,curAttachIndex)
-	 if inboxitem and not invFull or -- inventory not full
-	    (mod.db.char.takeStackable and -- or continue taking stackable items even if full
-	       itemCount < select(8, GetItemInfo(inboxitem))) then
+	 if inboxitem and
+	    (not invFull or -- inventory not full
+	       (mod.db.char.takeStackable and -- or continue taking stackable items even if full
+		  itemCount < select(8, GetItemInfo(inboxitem)))) then
 	    TakeInboxItem(curIndex, curAttachIndex)
 	    markTable[markKey] = nil
 	    actionTaken = true
