@@ -276,7 +276,7 @@ function mod:OnInitialize()
 			   {
 			      type =  "data source", 
 			      label = L["Bulk Mail Inbox"]..VERSION,
-			      icon = [[Interface\Addons\BulkMail2\icon]],
+			      icon = [[Interface\Addons\BulkMail2Inbox\icon]],
 			      tooltiptext = color(L["Bulk Mail Inbox"]..VERSION.."\n\n", "ffff00")..color(L["Hint:"].." "..L["Left click to open the config panel."].."\n"..
 													  L["Right click to open the config menu."], "ffd200"),
 			   OnClick = function(clickedframe, button)
