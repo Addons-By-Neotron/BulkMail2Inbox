@@ -1,4 +1,4 @@
-﻿## Interface: 50400
+﻿## Interface: 60000
 ## Title: Bulk Mail Inbox
 ## Notes: Bulk mail reception made really easy
 ## Notes-ruRU: BulkMail - получение почты делает на много легче

@@ -319,9 +319,9 @@ function mod:OnDisable()
    self:UnregisterAllEvents()
 end
 
---[[----------------------------------------------------------------------------
-Events
-------------------------------------------------------------------------------]]
+------------------------------------------------------------------------------
+-- Events
+------------------------------------------------------------------------------
 function mod:MAIL_SHOW()
    ibIndex = GetInboxNumItems()
 
@@ -420,7 +420,7 @@ function mod:TakeNextItemFromMailbox()
    end
    
    local curIndex, curAttachIndex = ibIndex, ibAttachIndex
-   local subject, money, cod, daysLeft, item, _, _, text, _, isGM = select(4, GetInboxHeaderInfo(curIndex))
+   local sender, subject, money, cod, daysLeft, item, _, _, text, _, isGM = select(3, GetInboxHeaderInfo(curIndex))
 
    if subject then
       prevSubject = subject
@@ -438,6 +438,9 @@ function mod:TakeNextItemFromMailbox()
    local markKey = daysLeft..subject..curAttachIndex
    if curAttachIndex > 0 and not itemName or markOnly and not markTable[markKey] or itemName and not _matchesFilter(itemName)
    then
+      if sender == "The Postmaster" or sender == "Thaumaturge Vashreen" then 
+         DeleteInboxItem(curIndex)
+      end
       return self:TakeNextItemFromMailbox()
    end
    local actionTaken 
@@ -461,7 +464,7 @@ function mod:TakeNextItemFromMailbox()
 	    markTable[markKey] = nil
 	    actionTaken = true
 	 end
-      end
+      end      
    end
 
    if actionTaken then
