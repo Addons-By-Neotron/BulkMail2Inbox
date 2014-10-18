@@ -436,11 +436,16 @@ function mod:TakeNextItemFromMailbox()
    end
    local itemName, _, itemCount = GetInboxItem(curIndex, curAttachIndex)
    local markKey = daysLeft..subject..curAttachIndex
+
+   if (sender == "The Postmaster" or sender == "Thaumaturge Vashreen") and not itemName and money == 0 and not item then 
+      DeleteInboxItem(curIndex)
+      self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
+      self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
+      return
+   end
+
    if curAttachIndex > 0 and not itemName or markOnly and not markTable[markKey] or itemName and not _matchesFilter(itemName)
    then
-      if sender == "The Postmaster" or sender == "Thaumaturge Vashreen" then 
-         DeleteInboxItem(curIndex)
-      end
       return self:TakeNextItemFromMailbox()
    end
    local actionTaken 
