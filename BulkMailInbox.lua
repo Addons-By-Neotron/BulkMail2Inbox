@@ -2,7 +2,7 @@ BulkMailInbox = LibStub("AceAddon-3.0"):NewAddon("BulkMailInbox", "AceConsole-3.
 
 local mod, self, BulkMailInbox = BulkMailInbox, BulkMailInbox, BulkMailInbox
 
-local VERSION = "4.0-beta"
+local VERSION = "7.0.0"
 local LibStub = LibStub
 
 local L        = LibStub("AceLocale-3.0"):GetLocale("BulkMailInbox", false)
@@ -130,7 +130,7 @@ local function inboxCacheBuild()
 	    if GetInboxItem(i,j) and _matchesFilter(GetInboxItem(i, j)) then
 	       table.insert(inboxCache, newHash(
 			       'index', i, 'attachment', j, 'sender', sender, 'bmid', daysLeft..subject..j, 'returnable', canReturnItem, 'cod', cod,
-			       'daysLeft', daysLeft, 'itemLink', GetInboxItemLink(i,j), 'qty', select(3, GetInboxItem(i,j)), 'texture', (select(2, GetInboxItem(i,j)))
+			       'daysLeft', daysLeft, 'itemLink', GetInboxItemLink(i,j), 'qty', select(4, GetInboxItem(i,j)), 'texture', (select(3, GetInboxItem(i,j)))
 			 ))
 	       numInboxItems = numInboxItems + 1
 	    end
@@ -434,7 +434,7 @@ function mod:TakeNextItemFromMailbox()
    else
       ibAttachIndex = ibAttachIndex + 1
    end
-   local itemName, _, itemCount = GetInboxItem(curIndex, curAttachIndex)
+   local itemName, _, _, itemCount = GetInboxItem(curIndex, curAttachIndex)
    local markKey = daysLeft..subject..curAttachIndex
 
    if (sender == "The Postmaster" or sender == "Thaumaturge Vashreen") and not itemName and money == 0 and not item then 
@@ -880,18 +880,18 @@ local function _addHeaderAndNavigation(tooltip, totalRows, firstRow, lastRow)
    end
    
    local sel = function(str, col)
-		  return color(str, col == mod.db.char.sortField and "ffff7f" or "ffffff")
-	       end
+      return color(str, col == mod.db.char.sortField and "ffff7f" or "ffffff")
+   end
    y = tooltip:AddLine("", sel(L["Items (Inbox click actions apply)"], 1), sel(L["Qty."], 2), sel(L["Returnable"], 3), sel(L["Sender"], 4), sel(L["TTL"], 5), sel(L["Mail #"], 6))
    local setSortFieldFunc = function(obj, field)
-			       if mod.db.char.sortField == field then
-				  mod.db.char.sortReversed = not mod.db.char.sortReversed and true or nil
-			       else
-				  mod.db.char.sortReversed = nil
-				  mod.db.char.sortField = field
-			       end
-			       self:RefreshInboxGUI()
-			    end
+      if mod.db.char.sortField == field then
+	 mod.db.char.sortReversed = not mod.db.char.sortReversed and true or nil
+      else
+	 mod.db.char.sortReversed = nil
+	 mod.db.char.sortField = field
+      end
+      self:RefreshInboxGUI()
+   end
    for i = 1,6 do 
       tooltip:SetCellScript(y, i+1, "OnMouseUp", setSortFieldFunc, i)
    end
