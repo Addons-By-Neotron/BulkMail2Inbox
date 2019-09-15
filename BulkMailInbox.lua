@@ -214,12 +214,6 @@ function mod:OnInitialize()
 	    get = function() return self.db.char.shiftTake end,
 	    set = function(args,v) self.db.char.shiftTake = v end,
 	 },
-	 takeall = {
-	    name = L["Take All"], type = 'toggle',
-	    desc = L["Enable 'Take All' button in inbox."],
-	    get = function() return self.db.char.takeAll end,
-	    set = function(args,v) self.db.char.takeAll = v self:UpdateTakeAllButton() end,
-	 },
 	 gui = {
 	    name = L["Show Inbox GUI"], type = 'toggle',
 	    desc = L["Show the Inbox Items GUI"],
@@ -302,7 +296,6 @@ function mod:OnInitialize()
 end
 
 function mod:OnEnable()
-   self:UpdateTakeAllButton()
    self:RegisterEvent('MAIL_SHOW')
    self:RegisterEvent('MAIL_CLOSED')
    self:RegisterEvent('PLAYER_ENTERING_WORLD')
@@ -512,24 +505,6 @@ function mod:InboxFrame_OnClick(parentself, index, attachment, ...)
    mod:SmartScheduleTimer("BMI_RefreshInboxGUI", true, "RefreshInboxGUI", 0.1)
 end
 
---[[----------------------------------------------------------------------------
-Inbox GUI
-------------------------------------------------------------------------------]]
--- Update/Create the Take All button
-function mod:UpdateTakeAllButton()
-   if self.db.char.takeAll then
-      if _G.BMI_TakeAllButton then return end
-      local bmiTakeAllButton = CreateFrame("Button", "BMI_TakeAllButton", InboxFrame, "UIPanelButtonTemplate")
-      bmiTakeAllButton:SetWidth(120)
-      bmiTakeAllButton:SetHeight(25)
-      bmiTakeAllButton:SetPoint("CENTER", InboxFrame, "TOP", -15, -410)
-      bmiTakeAllButton:SetText(L["Take All"])
-      bmiTakeAllButton:SetScript("OnClick", function() takeAll() end)
-   else
-      if _G.BMI_TakeAllButton then _G.BMI_TakeAllButton:Hide() end
-      _G.BMI_TakeAllButton = nil
-   end
-end
 
 -- Inbox Items Tablet
 local function highlightSameMailItems(index, ...)
