@@ -889,7 +889,7 @@ function mod:AdjustSizeAndPosition(tooltip)
 
    -- Only adjust point if user hasn't moved manually. This puts it lined up with the mail window
    -- or in the middle of the screen it's too large to fit from the top of the mail window and down
-   if not tooltip.moved then
+   if not tooltip.moved and MailFrame ~= nil and MailFrame:GetTop() ~= nil then
       local tipHeight = tooltip:GetHeight() * scale
       tooltip:ClearAllPoints()
       -- Calculate a good offset

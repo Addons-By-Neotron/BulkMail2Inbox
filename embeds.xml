@@ -15,7 +15,6 @@
   <Include file="Libs\LibSharedMedia-3.0\lib.xml"/>
   <Include file="Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
   <Include file="Libs\LibDropdown-1.0\LibDropdown-1.0\lib.xml"/>
-  <Include file="Libs\LibDropdown-1.0\lib.xml"/>
   <Script  file="Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
   <Include file="Libs\LibAbacus-3.0\lib.xml"/>
   <Include file="Libs\LibQTip-1.0\lib.xml"/>
