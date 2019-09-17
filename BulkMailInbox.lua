@@ -811,6 +811,7 @@ local function _createOrAttachSearchBar(tooltip)
       toolbar:RegisterForDrag("LeftButton")
       toolbar:SetMovable(true)
       mod._toolbar = toolbar
+      mod._toolbarEditBox = editBox
    end
 
    toolbar:SetScript("OnDragStart", function() tooltip:StartMoving() end)
@@ -932,6 +933,13 @@ function mod:ShowInboxGUI()
 
    local tooltip = mod.inboxGUI
 
+   local refocus = false
+   local cursorpos = 0
+   if mod._toolbarEditBox and mod._toolbarEditBox:HasFocus() then
+      refocus = true
+      cursorpos = mod._toolbarEditBox:GetCursorPosition()
+   end
+
    if not tooltip then
       tooltip = QTIP:Acquire("BulkMailInboxGUI")
       if tooltip.SetScrollStep then
@@ -946,6 +954,7 @@ function mod:ShowInboxGUI()
       mod.inboxGUI = tooltip
       startPage = 0
    else
+      tooltip:Hide()
       tooltip:Clear()      
    end
 
@@ -957,9 +966,7 @@ function mod:ShowInboxGUI()
    font:CopyFontObject(GameFontNormal)
    font:SetFont(fontName, mod.db.profile.fontSize, "")
    mod.font = font
-
    _createOrAttachSearchBar(tooltip)
-
    tooltip:SetFont(font)
 
    local markedColor = function(str, col)
@@ -1045,6 +1052,11 @@ function mod:ShowInboxGUI()
    mod:AdjustSizeAndPosition(tooltip)
    
    tooltip:Show()
+   if refocus then
+      mod._toolbarEditBox:SetFocus(true)
+      mod._toolbarEditBox:HighlightText(0,0)
+      mod._toolbarEditBox:SetCursorPosition(cursorpos)
+   end
 end
 
 -- Convenience function for registering options tables
