@@ -338,7 +338,7 @@ end
 
 BulkMailInbox.PLAYER_ENTERING_WORLD = BulkMailInbox.MAIL_CLOSED  -- MAIL_CLOSED doesn't get called if, for example, the player accepts a port with the mail window open
 
-function mod:UI_ERROR_MESSAGE(event, msg)  -- prevent infinite loop when inventory is full
+function mod:UI_ERROR_MESSAGE(event, type, msg)  -- prevent infinite loop when inventory is full
    if msg == ERR_INV_FULL then
       invFull = true
    end
