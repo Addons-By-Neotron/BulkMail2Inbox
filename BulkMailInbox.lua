@@ -1005,11 +1005,12 @@ function mod:ShowInboxGUI()
 						  if not IsModifierKeyDown() then
 						     if info.bmid then 
 							markTable[info.bmid] = not markTable[info.bmid] and true or nil
-							tooltip:SetCell(line, 1, markTable[info.bmid] and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, 15, 15)
+							tooltip:SetCell(line, 1, markTable[info.bmid] 
+									      and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, 18, 15)
 							if markTable[info.bmid] then
 							   tooltip:SetLineColor(line, 1, 1, 1, 0.3)
 							else
-							   tooltip:SetLineColor(line)
+							   tooltip:SetLineColor(line, 1, 1, 1, 0.0)
 							end
 
 							_updateButtonStates(tooltip)
