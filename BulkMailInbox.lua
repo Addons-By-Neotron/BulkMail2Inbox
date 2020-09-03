@@ -689,7 +689,7 @@ end
 local function _createOrAttachSearchBar(tooltip)
    local toolbar = mod._toolbar
    if not toolbar then
-      toolbar = CreateFrame("Frame", nil, UIParent)
+      toolbar = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
       toolbar:SetHeight(49)
 
       local closeButton =  CreateFrame("Button", "BulkMailInboxToolbarCloseButton", toolbar, "UIPanelCloseButton")
@@ -802,13 +802,13 @@ local function _createOrAttachSearchBar(tooltip)
 
       toolbar:SetBackdrop(backdrop)
    
-      if backdrop then
-	 toolbar:SetBackdropColor(GameTooltip:GetBackdropColor())
-	 toolbar:SetBackdropBorderColor(GameTooltip:GetBackdropBorderColor())
-      end
+       if backdrop then
+           toolbar:SetBackdropColor(GameTooltip:GetBackdropColor())
+           toolbar:SetBackdropBorderColor(GameTooltip:GetBackdropBorderColor())
+       end
 
       toolbar:EnableMouse(true)
-      toolbar:RegisterForDrag("LeftButton")
+       toolbar:RegisterForDrag("LeftButton")
       toolbar:SetMovable(true)
       mod._toolbar = toolbar
       mod._toolbarEditBox = editBox
