@@ -61,3 +61,5 @@ L["Take all items from the mailbox. If the search filter is used,\nonly items ma
 L["Take all money from the mailbox. If the search filter is used,\nmoney will only be taken from mails which the search term."] = true
 L["Take all selected items from the mailbox."] = true
 L["Yes"] = true
+L["Page Size"] = true
+L["Maximum number of items to display per page."] = true
