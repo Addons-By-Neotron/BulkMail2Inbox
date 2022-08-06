@@ -1,9 +1,10 @@
-﻿## Interface: 90005
+﻿## Interface: 90205
 ## Interface-Classic: 11403
 ## Interface-BCC: 20504
-## Interface-Retail: 90205
+## Interface-Wrath: 30400
 ## X-Curse-Project-ID: 13587
 ## X-WoWI-ID: 18867
+## X-Wago-ID: WL6JdYGv
 ## Title: Bulk Mail Inbox
 ## Notes: Bulk mail reception made really easy
 ## Notes-ruRU: BulkMail - получение почты делает на много легче
