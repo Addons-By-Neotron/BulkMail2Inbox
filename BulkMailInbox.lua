@@ -314,6 +314,7 @@ function mod:OnEnable()
     self:RegisterEvent('PLAYER_ENTERING_WORLD')
     self:RegisterEvent('UI_ERROR_MESSAGE')
     self:RegisterEvent('MAIL_INBOX_UPDATE')
+    self:RegisterEvent('PLAYER_INTERACTION_MANAGER_FRAME_HIDE')
 
     -- Handle being LoD loaded while at the mailbox
     if MailFrame:IsVisible() then
@@ -340,6 +341,12 @@ function mod:MAIL_SHOW()
     end
 
     self:ShowInboxGUI()
+end
+
+function mod:PLAYER_INTERACTION_MANAGER_FRAME_HIDE(_, type)
+    if type == Enum.PlayerInteractionType.MailInfo then
+        mod:MAIL_CLOSED()
+    end
 end
 
 function mod:MAIL_CLOSED()
