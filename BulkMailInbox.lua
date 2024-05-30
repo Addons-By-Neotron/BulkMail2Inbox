@@ -129,7 +129,7 @@ local function inboxCacheBuild()
             if isGM or not canReply or _isAHSentMail(subject) then
                 canReturnItem = false
             end
-            for j=1, ATTACHMENTS_MAX_SEND do
+            for j=1, ATTACHMENTS_MAX_RECEIVE do
                 if GetInboxItem(i,j) and _matchesFilter(GetInboxItem(i, j)) then
                     table.insert(inboxCache, newHash(
                             'index', i, 'attachment', j, 'sender', sender, 'bmid', daysLeft..subject..j, 'returnable', canReturnItem, 'cod', cod,
@@ -442,7 +442,7 @@ function mod:TakeNextItemFromMailbox()
         subject = prevSubject
     end
 
-    if curAttachIndex == ATTACHMENTS_MAX_SEND then
+    if curAttachIndex == ATTACHMENTS_MAX_RECEIVE then
         ibIndex = ibIndex - 1
         ibAttachIndex = 0
     else
