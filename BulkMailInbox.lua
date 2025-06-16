@@ -24,7 +24,8 @@ local fmt = string.format
 local lower = string.lower
 
 local sortFields, markTable  -- tables
-local ibIndex, ibAttachIndex, numInboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull, filterText -- variables
+local ibIndex, ibAttachIndex, numInboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull, filterText, guiDirty -- variables
+local PERIODIC_GUI_UPDATE = 5
 local spinnerText = { "Working   ", "Working.  ", "Working.. ", "Working..." }
 
 --[[----------------------------------------------------------------------------
@@ -155,6 +156,8 @@ local function takeAll(cash, mark)
     ibIndex = GetInboxNumItems()
     ibAttachIndex = 0
     takeAllInProgress = true
+    guiDirty = false
+    mod:SmartScheduleTimer('BMI_periodicRefresh', true, _periodicGUIRefresh, PERIODIC_GUI_UPDATE)
     inboxCacheBuild()
     mod:TakeNextItemFromMailbox()
 end
@@ -411,6 +414,17 @@ local function _updateSpinner()
     end
 end
 
+local function _periodicGUIRefresh()
+    mod:SmartCancelTimer('BMI_periodicRefresh')
+    if guiDirty then
+        mod:RefreshInboxGUI()
+        guiDirty = false
+    end
+    if takeAllInProgress then
+        mod:SmartScheduleTimer('BMI_periodicRefresh', true, _periodicGUIRefresh, PERIODIC_GUI_UPDATE)
+    end
+end
+
 function mod:TakeNextItemFromMailbox()
     _updateSpinner()
     if not takeAllInProgress then
@@ -424,7 +438,10 @@ function mod:TakeNextItemFromMailbox()
         if cleanPass or numMails <= 0 then
             takeAllInProgress = false
             invFull = false
-            return self:RefreshInboxGUI()
+            mod:SmartCancelTimer('BMI_periodicRefresh')
+            local result = self:RefreshInboxGUI()
+            guiDirty = false
+            return result
         else
             ibIndex = numMails
             ibAttachIndex = 0
@@ -453,7 +470,7 @@ function mod:TakeNextItemFromMailbox()
 
     if (sender == "The Postmaster" or sender == "Thaumaturge Vashreen") and not itemName and money == 0 and not item then
         DeleteInboxItem(curIndex)
-        self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
+        guiDirty = true
         self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
         return
     end
@@ -488,7 +505,7 @@ function mod:TakeNextItemFromMailbox()
 
     if actionTaken then
         -- Since we did something, we'll add a delay to prevent erroring out
-        self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
+        guiDirty = true
         self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
         _fetchCount = _fetchCount + 1
     else
@@ -515,6 +532,7 @@ end
 
 function mod:InboxFrame_OnClick(parentself, index, attachment, ...)
     takeAllInProgress = false
+    mod:SmartCancelTimer('BMI_periodicRefresh')
     local _, _, _, _, money, cod, _, hasItem, _, wasReturned, _, canReply = GetInboxHeaderInfo(index)
     if self.db.char.shiftTake and IsShiftKeyDown() then
         if money > 0 then TakeInboxMoney(index)
@@ -607,6 +625,7 @@ function mod:HideInboxGUI()
     mod:SmartCancelTimer('BMI_takeAll')
     mod:SmartCancelTimer('BMI_TakeNextItem')
     mod:SmartCancelTimer('BMI_RefreshInboxGUI')
+    mod:SmartCancelTimer('BMI_periodicRefresh')
 
     if mod._toolbar then
         mod._toolbar:Hide()
@@ -776,10 +795,12 @@ local function _createOrAttachSearchBar(tooltip)
                     -- stop taking items when search terms change or we might
                     -- end up taking stuff we didn't mean to take
                     mod:SmartCancelTimer('BMI_takeAll')
+                    mod:SmartCancelTimer('BMI_periodicRefresh')
                     takeAllInProgress = false
                     _updateSpinner()
                     filterText = editBox:GetText():lower()
                     wipe(markTable)
+                    guiDirty = false
                     mod:RefreshInboxGUI()
                 end)
 
@@ -807,7 +828,14 @@ local function _createOrAttachSearchBar(tooltip)
 
         local cancelButton =  CreateFrame("Button", "BulkMailInboxToolbarCancelButton", toolbar, "UIPanelCloseButton")
         cancelButton:SetPoint("RIGHT", spinner, "LEFT", 0, 0)
-        cancelButton:SetScript("OnClick", function(self) takeAllInProgress = nil end)
+        cancelButton:SetScript("OnClick", function(self)
+            takeAllInProgress = nil
+            mod:SmartCancelTimer('BMI_periodicRefresh')
+            if guiDirty then
+                mod:RefreshInboxGUI()
+                guiDirty = false
+            end
+        end)
         _addTooltipToFrame(cancelButton, L["Cancel"], L["Cancel taking items from the inbox."])
         mod.buttons.Cancel = cancelButton
 
