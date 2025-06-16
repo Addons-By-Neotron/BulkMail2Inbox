@@ -755,7 +755,7 @@ local function _createOrAttachSearchBar(tooltip)
         toolbar.itemText = itemText
 
 
-        button = _createButton("CS", toolbar, function() wipe(markTable) self:RefreshInboxGUI() end, closeButton, -2,
+        local button = _createButton("CS", toolbar, function() wipe(markTable) self:RefreshInboxGUI() end, closeButton, -2,
                 L["Clear Selected"], L["Clear the list of selected items."])
         button = _createButton("TS", toolbar, function() takeAll(false, true) end, button, -2,
                 L["Take Selected"], L["Take all selected items from the mailbox."])
@@ -766,7 +766,7 @@ local function _createOrAttachSearchBar(tooltip)
 
         mod.buttons.prev = prevButton
         mod.buttons.next = nextButton
-        mod.buttons.close = closebuttons
+        mod.buttons.close = closeButton
 
         local editBox = CreateFrame("EditBox", "BulkMailInboxSearchFilterEditBox", toolbar, "InputBoxTemplate")
         editBox:SetWidth(100)
@@ -861,6 +861,7 @@ end
 
 -- This adds the header info, and next prev buttons if needed
 local function _addHeaderAndNavigation(tooltip, totalRows, firstRow, lastRow)
+    local y
     mod._toolbar.itemText:SetText(fmt(L["Inbox Items (%d mails, %s)"], GetInboxNumItems(), abacus:FormatMoneyShort(inboxCash)))
     if firstRow and lastRow then
         mod._toolbar.pageText:SetText(fmt(L["Item %d-%d of %d"], firstRow, lastRow, totalRows))
