@@ -299,7 +299,7 @@ function mod:OnInitialize()
 
     self._mainConfig = self:OptReg(L["Bulk Mail Inbox"], self.opts,  { "bmi", "bulkmailinbox" })
 
-    if BulkMail then
+    if BulkMail and BulkMail.opts then
         BulkMail.opts.args.inbox = { type = "group",
                                      handler = mod,
                                      name = L["Inbox"],

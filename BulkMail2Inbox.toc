@@ -1,8 +1,4 @@
-## Interface: 110107
-## Interface-Classic: 11403
-## Interface-BCC: 20504
-## Interface-Cata: 40402
-## Interface-Mists: 50500
+## Interface: 110207, 120000, 120001, 50503, 38000, 20505, 11508
 ## X-Curse-Project-ID: 13587
 ## X-WoWI-ID: 18867
 ## X-Wago-ID: WL6JdYGv
@@ -11,6 +7,7 @@
 ## Notes-ruRU: BulkMail - получение почты делает на много легче
 ## Version: @project-version@
 ## Author: NeoTron
+## IconTexture: Interface\Icons\INV_Letter_15
 ## X-Credits: hyperactiveChipmunk
 ## X-Category: Mail
 ## X-eMail: neotron@gmail.com
