@@ -109,6 +109,10 @@ local function _matchesFilter(text)
     return text:lower():find(filterText, 1, true) ~= nil
 end
 
+-- markedSlots is resolved from markTable before taking, so the take loop
+-- doesn't need to reconstruct bmid keys (which drift due to daysLeft changing).
+local markedSlots = {}
+
 local function inboxCacheBuild()
     local start = GetTime()
     for k in ipairs(inboxCache) do inboxCache[k] = del(inboxCache[k]) end
@@ -163,6 +167,18 @@ local function takeAll(cash, mark)
 
     cashOnly = cash
     markOnly = mark
+
+    -- Resolve marked items to (index, attachment) pairs using the current
+    -- cache BEFORE rebuilding, so we don't depend on bmid key stability.
+    wipe(markedSlots)
+    if mark then
+        for _, entry in ipairs(inboxCache) do
+            if markTable[entry.bmid] then
+                markedSlots[entry.index * 1000 + (entry.attachment or 0)] = true
+            end
+        end
+    end
+
     ibIndex = GetInboxNumItems()
     ibAttachIndex = 0
     takeAllInProgress = true
@@ -529,7 +545,7 @@ function mod:TakeNextItemFromMailbox()
     end
 
     local itemName, _, _, itemCount = GetInboxItem(curIndex, curAttachIndex)
-    local markKey = daysLeft..subject..curAttachIndex
+    local slotKey = curIndex * 1000 + curAttachIndex
 
     if (sender == "The Postmaster" or sender == "Thaumaturge Vashreen") and not itemName and money == 0 and not item then
         DeleteInboxItem(curIndex)
@@ -537,7 +553,7 @@ function mod:TakeNextItemFromMailbox()
         return
     end
 
-    if curAttachIndex > 0 and not itemName or markOnly and not markTable[markKey] or itemName and not _matchesFilter(itemName)
+    if curAttachIndex > 0 and not itemName or markOnly and not markedSlots[slotKey] or itemName and not _matchesFilter(itemName)
     then
         return self:TakeNextItemFromMailbox()
     end
@@ -559,7 +575,7 @@ function mod:TakeNextItemFromMailbox()
                             (mod.db.char.takeStackable and -- or continue taking stackable items even if full
                                     itemCount < select(8, GetItemInfo(inboxitem)))) then
                 TakeInboxItem(curIndex, curAttachIndex)
-                markTable[markKey] = nil
+                markedSlots[slotKey] = nil
                 actionTaken = true
             end
         end
