@@ -66,4 +66,9 @@ L["Take all selected items from the mailbox."] = true
 L["Yes"] = true
 L["Page Size"] = true
 L["Maximum number of items to display per page."] = true
+L["Click - Select/deselect item"] = true
+L["Alt-click - Select/deselect all of same item"] = true
+L["Shift-click - Take item"] = true
+L["Ctrl-click - Return mail"] = true
+L["Alt-click - Delete mail (returned only)"] = true
 --@localization(locale="enUS", format="lua_additive_table", same-key-is-true=true, handle-subnamespaces="concat")@

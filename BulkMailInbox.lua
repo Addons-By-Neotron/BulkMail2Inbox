@@ -1134,14 +1134,27 @@ function mod:ShowInboxGUI()
             if isMarked then
                 tooltip:SetLineColor(y, 1, 1, 1, 0.3)
             end
-            tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, mod.db.profile.fontSize + 3, mod.db.profile.fontSize + 3)
+            tooltip:SetCell(y, 1, isMarked and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or [[|TInterface\Buttons\UI-CheckBox-Up:18|t]], nil,  "RIGHT", 1, nil, 0, 0, 18, 15)
 
             tooltip:SetLineScript(y, "OnMouseUp", function(frame, line)
-                if not IsModifierKeyDown() then
+                if IsAltKeyDown() and not IsShiftKeyDown() and not IsControlKeyDown() then
+                    -- Alt-click: select/deselect all items of the same type
+                    local link = info.itemLink
+                    if link then
+                        -- Determine new state: if this item is unmarked, select all; otherwise deselect all
+                        local newState = not markTable[info.bmid] and true or nil
+                        for _, entry in ipairs(inboxCache) do
+                            if entry.itemLink == link then
+                                markTable[entry.bmid] = newState
+                            end
+                        end
+                        self:ShowInboxGUI()
+                    end
+                elseif not IsModifierKeyDown() then
                     if info.bmid then
                         markTable[info.bmid] = not markTable[info.bmid] and true or nil
                         tooltip:SetCell(line, 1, markTable[info.bmid]
-                                and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or " ", nil,  "RIGHT", 1, nil, 0, 0, 18, 15)
+                                and [[|TInterface\Buttons\UI-CheckBox-Check:18|t]] or [[|TInterface\Buttons\UI-CheckBox-Up:18|t]], nil,  "RIGHT", 1, nil, 0, 0, 18, 15)
                         if markTable[info.bmid] then
                             tooltip:SetLineColor(line, 1, 1, 1, 0.3)
                         else
@@ -1174,6 +1187,18 @@ function mod:ShowInboxGUI()
     _updateButtonStates(tooltip)
     _addColspanCell(tooltip, color(L["Close"], "ffd200"), 7, mod.HideInboxGUI, mod)
 
+    tooltip:AddSeparator(1)
+    _addColspanCell(tooltip, color(L["Click - Select/deselect item"], "ffffff"), 7)
+    _addColspanCell(tooltip, color(L["Alt-click - Select/deselect all of same item"], "ffffff"), 7)
+    if self.db.char.shiftTake then
+        _addColspanCell(tooltip, color(L["Shift-click - Take item"], "ffffff"), 7)
+    end
+    if self.db.char.ctrlRet then
+        _addColspanCell(tooltip, color(L["Ctrl-click - Return mail"], "ffffff"), 7)
+    end
+    if self.db.char.altDel then
+        _addColspanCell(tooltip, color(L["Alt-click - Delete mail (returned only)"], "ffffff"), 7)
+    end
 
     tooltip:SetFrameStrata("FULLSCREEN")
     -- set max height to be 80% of the screen height
