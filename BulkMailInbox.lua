@@ -23,6 +23,7 @@ local LD     = LibStub("LibDropdown-1.0")
 local _G = _G
 local fmt = string.format
 local lower = string.lower
+local hasCommandPending = C_Mail and C_Mail.IsCommandPending
 
 local sortFields, markTable  -- tables
 local ibIndex, ibAttachIndex, numInboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull, filterText -- variables
@@ -61,13 +62,14 @@ Local Processing
 ------------------------------------------------------------------------------]]
 -- Build a table with info about all items and money in the Inbox
 local inboxCache = {}
+local _sortNameCache = {}
 local function _sortInboxFunc(itemA,itemB)
     local sf = sortFields[BulkMailInbox.db.char.sortField]
     if itemA and itemB then
         local a, b = itemA[sf], itemB[sf]
         if sf == 'itemLink' then
-            a = a and GetItemInfo(a) or a
-            b = b and GetItemInfo(b) or b
+            a = a and _sortNameCache[a] or a
+            b = b and _sortNameCache[b] or b
         elseif sf == 'qty' then
             a = a or itemA["money"]
             b = b or itemB["money"]
@@ -131,14 +133,22 @@ local function inboxCacheBuild()
                 canReturnItem = false
             end
             for j=1, ATTACHMENTS_MAX_RECEIVE do
-                if GetInboxItem(i,j) and _matchesFilter(GetInboxItem(i, j)) then
+                local itemName, itemID, itemTexture, itemCount = GetInboxItem(i, j)
+                if itemName and _matchesFilter(itemName) then
                     table.insert(inboxCache, newHash(
                             'index', i, 'attachment', j, 'sender', sender, 'bmid', daysLeft..subject..j, 'returnable', canReturnItem, 'cod', cod,
-                            'daysLeft', daysLeft, 'itemLink', GetInboxItemLink(i,j), 'qty', select(4, GetInboxItem(i,j)), 'texture', (select(3, GetInboxItem(i,j)))
+                            'daysLeft', daysLeft, 'itemLink', GetInboxItemLink(i,j), 'qty', itemCount, 'texture', itemTexture
                     ))
                     numInboxItems = numInboxItems + 1
                 end
             end
+        end
+    end
+    wipe(_sortNameCache)
+    for _, entry in ipairs(inboxCache) do
+        local link = entry.itemLink
+        if link and not _sortNameCache[link] then
+            _sortNameCache[link] = GetItemInfo(link) or link
         end
     end
     table.sort(inboxCache, _sortInboxFunc)
@@ -340,6 +350,10 @@ function mod:MAIL_SHOW()
         self:Hook('InboxFrame_OnClick', nil, true)
         self:SecureHookScript(MailFrameTab1, 'OnClick', 'ShowInboxGUI')
         self:SecureHookScript(MailFrameTab2, 'OnClick', 'HideInboxGUI')
+        -- Detect external mail operations (TSM, base UI "Open All", etc.)
+        self:SecureHook('AutoLootMailItem', 'OnExternalMailAction')
+        self:SecureHook('TakeInboxItem', 'OnExternalMailAction')
+        self:SecureHook('TakeInboxMoney', 'OnExternalMailAction')
     end
 
     self:ShowInboxGUI()
@@ -366,6 +380,15 @@ function mod:UI_ERROR_MESSAGE(event, type, msg)  -- prevent infinite loop when i
     end
 end
 
+-- Track external mail operations (TSM, base UI "Open All", etc.)
+local lastExternalMailAction = 0
+
+function mod:OnExternalMailAction()
+    if not takeAllInProgress then
+        lastExternalMailAction = GetTime()
+    end
+end
+
 -- Take next inbox item or money skip past CoD items and letters.
 local prevSubject = ''
 
@@ -388,9 +411,43 @@ function mod:SmartScheduleTimer(name, override, method, timeout, ...)
     end
 end
 
+local POLL_INTERVAL = 0.05    -- 50ms between polls
+local FALLBACK_DELAY = 0.15  -- fixed delay when C_Mail.IsCommandPending unavailable
+local POLL_TIMEOUT = 5.0     -- safety timeout to avoid getting stuck
+
+local pollStartTime = 0
+
+function mod:PollAndTakeNext()
+    if not takeAllInProgress then return end
+    if hasCommandPending and C_Mail.IsCommandPending() then
+        if (GetTime() - pollStartTime) < POLL_TIMEOUT then
+            self:SmartScheduleTimer('BMI_TakeNextItem', true, "PollAndTakeNext", POLL_INTERVAL)
+            return
+        end
+        -- Timed out waiting for server, proceed anyway
+    end
+    self:TakeNextItemFromMailbox()
+end
+
+function mod:ScheduleNextMailAction()
+    pollStartTime = GetTime()
+    if hasCommandPending then
+        self:SmartScheduleTimer('BMI_TakeNextItem', true, "PollAndTakeNext", POLL_INTERVAL)
+    else
+        self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", FALLBACK_DELAY)
+    end
+end
+
 function mod:MAIL_INBOX_UPDATE()
-    if not takeAllInProgress and not self.refreshInboxTimer then
-        mod:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", .5)
+    if takeAllInProgress then return end
+
+    if (GetTime() - lastExternalMailAction) < 2.0 then
+        -- External addon/UI is actively processing mail; use non-overriding
+        -- timer so we refresh at ~2s intervals instead of on every event
+        mod:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 2.0)
+    else
+        -- Normal operation: coalesce rapid events into one refresh
+        mod:SmartScheduleTimer('BMI_RefreshInboxGUI', true, "RefreshInboxGUI", 1.0)
     end
 end
 
@@ -449,13 +506,34 @@ function mod:TakeNextItemFromMailbox()
     else
         ibAttachIndex = ibAttachIndex + 1
     end
+
+    -- Fast path: loot entire mail at once when no filtering is needed
+    if curAttachIndex == 0 and not cashOnly and not markOnly
+            and (not filterText or filterText == "")
+            and cod == 0 and not invFull
+            and (money > 0 or item)
+            and not string.find(subject, "Sale Pending") then
+        if item then
+            AutoLootMailItem(curIndex)
+        end
+        if money > 0 then
+            TakeInboxMoney(curIndex)
+        end
+        ibIndex = curIndex - 1
+        ibAttachIndex = 0
+        cleanPass = false
+        self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 2.0)
+        self:ScheduleNextMailAction()
+        _fetchCount = _fetchCount + 1
+        return
+    end
+
     local itemName, _, _, itemCount = GetInboxItem(curIndex, curAttachIndex)
     local markKey = daysLeft..subject..curAttachIndex
 
     if (sender == "The Postmaster" or sender == "Thaumaturge Vashreen") and not itemName and money == 0 and not item then
         DeleteInboxItem(curIndex)
-        self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
-        self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
+        self:ScheduleNextMailAction()
         return
     end
 
@@ -489,8 +567,8 @@ function mod:TakeNextItemFromMailbox()
 
     if actionTaken then
         -- Since we did something, we'll add a delay to prevent erroring out
-        self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 1)
-        self:SmartScheduleTimer('BMI_TakeNextItem', true, "TakeNextItemFromMailbox", 0.4)
+        self:SmartScheduleTimer('BMI_RefreshInboxGUI', false, "RefreshInboxGUI", 2.0)
+        self:ScheduleNextMailAction()
         _fetchCount = _fetchCount + 1
     else
         -- We didn't take any items so let's move on
