@@ -18,4 +18,5 @@
   <Script  file="Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
   <Include file="Libs\LibAbacus-3.0\lib.xml"/>
   <Include file="Libs\LibQTip-1.0\lib.xml"/>
+  <Include file="Libs\LibMagicUtil-1.0\LibMagicUtil-1.0\lib.xml"/>
 </Ui>

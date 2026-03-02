@@ -16,8 +16,9 @@ local QTIP   = LibStub("LibQTip-1.0")
 local AC     = LibStub("AceConfig-3.0")
 local ACD    = LibStub("AceConfigDialog-3.0")
 local DB     = LibStub("AceDB-3.0")
-local LDB    = LibStub("LibDataBroker-1.1", true)
-local LD     = LibStub("LibDropdown-1.0")
+local LDB      = LibStub("LibDataBroker-1.1", true)
+local LD       = LibStub("LibDropdown-1.0")
+local MagicUtil = LibStub("LibMagicUtil-1.0")
 
 
 local _G = _G
@@ -373,6 +374,33 @@ function mod:MAIL_SHOW()
     end
 
     self:ShowInboxGUI()
+    -- Watch for mail frame changes (e.g. TSM toggling between its UI and the default)
+    mod._lastMailFrame = nil
+    if not mod._mailFrameWatcher then
+        mod._mailFrameWatcher = self:ScheduleRepeatingTimer("CheckMailFrameChanged", 0.2)
+    end
+end
+
+function mod:CheckMailFrameChanged()
+    local mailFrame, isTSM = MagicUtil:GetMailFrame()
+    if mailFrame ~= mod._lastMailFrame then
+        mod._lastMailFrame = mailFrame
+        if isTSM then
+            -- TSM active: always show inbox alongside send queue
+            self:ShowInboxGUI()
+            -- Tell BulkMail2 to reposition send queue now that inbox is shown
+            if BulkMail and BulkMail.sendQueueTooltip then
+                BulkMail:ShowSendQueueGUI()
+            end
+        else
+            -- Switching to normal UI: show inbox only if on Inbox tab
+            if SendMailFrame and SendMailFrame:IsShown() then
+                self:HideInboxGUI()
+            else
+                self:ShowInboxGUI()
+            end
+        end
+    end
 end
 
 function mod:PLAYER_INTERACTION_MANAGER_FRAME_HIDE(_, type)
@@ -383,6 +411,11 @@ end
 
 function mod:MAIL_CLOSED()
     takeAllInProgress = false
+    if mod._mailFrameWatcher then
+        self:CancelTimer(mod._mailFrameWatcher)
+        mod._mailFrameWatcher = nil
+    end
+    mod._lastMailFrame = nil
     self:HideInboxGUI()
     GameTooltip:Hide()
     self:UnhookAll()
@@ -1017,12 +1050,22 @@ function mod:AdjustSizeAndPosition(tooltip)
 
     -- Only adjust point if user hasn't moved manually. This puts it lined up with the mail window
     -- or in the middle of the screen it's too large to fit from the top of the mail window and down
-    if not tooltip.moved and MailFrame ~= nil and MailFrame:GetTop() ~= nil then
-        local tipHeight = tooltip:GetHeight() * scale
-        tooltip:ClearAllPoints()
-        -- Calculate a good offset
-        local offx = math.min((uiHeight - tipHeight - barHeight)/2, uiHeight + 12 - MailFrame:GetTop()*MailFrame:GetScale())+barHeight
-        tooltip:SetPoint("TOPLEFT", UIParent, "TOPLEFT", MailFrame:GetRight()*MailFrame:GetScale()/scale, -offx/scale)
+    mod:RepositionTooltip(tooltip, scale, barHeight)
+end
+
+function mod:RepositionTooltip(tooltip, scale, barHeight)
+    if not tooltip or tooltip.moved then return end
+    local mailFrame, isTSM = MagicUtil:GetMailFrame()
+    -- Offset down by toolbar height so the toolbar (anchored above the tooltip)
+    -- aligns with the top of the mail frame
+    local toolbarOffset = mod._toolbar and mod._toolbar:GetHeight() or 0
+    tooltip:ClearAllPoints()
+    if isTSM then
+        tooltip:SetPoint("TOPLEFT", mailFrame, "TOPRIGHT", 5, -toolbarOffset)
+    elseif MailFrame and MailFrame:GetRight() then
+        tooltip:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", 5, -toolbarOffset)
+    else
+        tooltip:SetPoint("TOP", UIParent, "TOP", 0, -toolbarOffset)
     end
 end
 
