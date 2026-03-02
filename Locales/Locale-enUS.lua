@@ -31,6 +31,14 @@ L["Filter the inbox display to items matching the term entered here.\nTake All a
 L["Font"] = true
 L["Font size"] = true
 L["Font used in the inbox list"] = true
+L["Free Position"] = true
+L["Disable automatic anchoring to the mail frame. The window will remember its position when dragged."] = true
+L["Window Size"] = true
+L["How the window height is determined. Page Size uses fixed rows. Match sets height to mail frame. Max limits height to mail frame."] = true
+L["Auto Page Size"] = true
+L["Automatically calculate page size to fit the mail frame. When disabled, uses the configured page size. Only applies when Window Size is set to Match or Max."] = true
+L["Match Mail Frame"] = true
+L["Max Mail Frame"] = true
 L["GUI Scale"] = true
 L["Go to the next page of items."] = true
 L["Go to the previous page of items."] = true

@@ -216,7 +216,11 @@ function mod:OnInitialize()
             scale = 1.0,
             font = "Friz Quadrata TT",
             fontSize = 12,
-            pageSize = 50
+            pageSize = 50,
+            autoPageSize = true,
+            sizeMode = "page",
+            freePosition = false,
+            savedPos = nil,
         }
     }, "Default")
 
@@ -282,6 +286,15 @@ function mod:OnInitialize()
                 get = function() return mod.db.profile.pageSize end,
                 order = 500,
             },
+            autoPageSize = {
+                name = L["Auto Page Size"],
+                type = 'toggle',
+                desc = L["Automatically calculate page size to fit the mail frame. When disabled, uses the configured page size. Only applies when Window Size is set to Match or Max."],
+                get = function() return self.db.profile.autoPageSize end,
+                set = function(_, v) self.db.profile.autoPageSize = v mod._matchMailRows = nil mod:RefreshInboxGUI(true) end,
+                disabled = function() return self.db.profile.freePosition or self.db.profile.sizeMode == "page" end,
+                order = 2510,
+            },
             font = {
                 type = "select",
                 dialogControl = "LSM30_Font",
@@ -299,6 +312,37 @@ function mod:OnInitialize()
                 set = function(_,val) mod.db.profile.fontSize = val mod:RefreshInboxGUI() end,
                 get = function() return mod.db.profile.fontSize end,
                 order = 2000,
+            },
+            sizeMode = {
+                name = L["Window Size"],
+                type = 'select',
+                desc = L["How the window height is determined. Page Size uses fixed rows. Match sets height to mail frame. Max limits height to mail frame."],
+                values = {
+                    page = L["Page Size"],
+                    match = L["Match Mail Frame"],
+                    max = L["Max Mail Frame"],
+                },
+                get = function() return self.db.profile.sizeMode end,
+                set = function(_, v) self.db.profile.sizeMode = v mod._matchMailRows = nil mod:RefreshInboxGUI(true) end,
+                disabled = function() return self.db.profile.freePosition end,
+                order = 2500,
+            },
+            freePosition = {
+                name = L["Free Position"],
+                type = 'toggle',
+                desc = L["Disable automatic anchoring to the mail frame. The window will remember its position when dragged."],
+                get = function() return self.db.profile.freePosition end,
+                set = function(_, v)
+                    self.db.profile.freePosition = v
+                    if not v then
+                        self.db.profile.savedPos = nil
+                        if mod.inboxGUI then
+                            mod.inboxGUI.moved = false
+                            mod:RefreshInboxGUI(true)
+                        end
+                    end
+                end,
+                order = 3000,
             },
 
         },
@@ -385,6 +429,7 @@ function mod:CheckMailFrameChanged()
     local mailFrame, isTSM = MagicUtil:GetMailFrame()
     if mailFrame ~= mod._lastMailFrame then
         mod._lastMailFrame = mailFrame
+        mod._matchMailRows = nil
         if isTSM then
             -- TSM active: always show inbox alongside send queue
             self:ShowInboxGUI()
@@ -765,6 +810,8 @@ function mod:RefreshInboxGUI(resetMoved)
     if mod.inboxGUI then
         if resetMoved then
             mod.inboxGUI.moved = nil
+            mod._matchMailRows = nil
+
         end
         -- Rebuild it since it's visible
         mod:ShowInboxGUI()
@@ -1045,16 +1092,41 @@ function mod:AdjustSizeAndPosition(tooltip)
         tooltip:SetPoint("TOP", UIParent, "TOP", 0, 0)
     end
     local barHeight = mod._toolbar:GetHeight()*scale
-    local uiHeight = UIParent:GetHeight()
-    tooltip:UpdateScrolling((uiHeight-barHeight+10)/scale)
+    local sizeMode = not mod.db.profile.freePosition and mod.db.profile.sizeMode or "page"
+    local mailFrameH
+    if sizeMode == "match" or sizeMode == "max" then
+        local mailFrame = MagicUtil:GetMailFrame()
+        if mailFrame and mailFrame:GetHeight() and mailFrame:GetHeight() > 0 then
+            mailFrameH = (mailFrame:GetHeight() - mod._toolbar:GetHeight()) / scale
+        end
+    end
+
+    if sizeMode == "max" and mailFrameH then
+        tooltip:UpdateScrolling(mailFrameH)
+    else
+        local uiHeight = UIParent:GetHeight()
+        tooltip:UpdateScrolling((uiHeight - barHeight + 10) / scale)
+    end
 
     -- Only adjust point if user hasn't moved manually. This puts it lined up with the mail window
     -- or in the middle of the screen it's too large to fit from the top of the mail window and down
     mod:RepositionTooltip(tooltip, scale, barHeight)
+
+    -- Match mode: set exact height to mail frame
+    if sizeMode == "match" and mailFrameH then
+        tooltip:SetHeight(mailFrameH)
+    end
 end
 
 function mod:RepositionTooltip(tooltip, scale, barHeight)
     if not tooltip or tooltip.moved then return end
+    -- Free positioning: restore saved position, or fall through to normal anchoring
+    if mod.db.profile.freePosition and mod.db.profile.savedPos then
+        local saved = mod.db.profile.savedPos
+        tooltip:ClearAllPoints()
+        tooltip:SetPoint(saved.point, UIParent, saved.relPoint, saved.x, saved.y)
+        return
+    end
     local mailFrame, isTSM = MagicUtil:GetMailFrame()
     -- Offset down by toolbar height so the toolbar (anchored above the tooltip)
     -- aligns with the top of the mail frame
@@ -1117,7 +1189,14 @@ function mod:ShowInboxGUI()
         end
         tooltip:EnableMouse(true)
         tooltip:SetScript("OnDragStart", tooltip.StartMoving)
-        tooltip:SetScript("OnDragStop", function() tooltip.moved = true tooltip:StopMovingOrSizing() end)
+        tooltip:SetScript("OnDragStop", function()
+            tooltip.moved = true
+            tooltip:StopMovingOrSizing()
+            if mod.db.profile.freePosition then
+                local point, _, relPoint, x, y = tooltip:GetPoint()
+                mod.db.profile.savedPos = { point = point, relPoint = relPoint, x = x, y = y }
+            end
+        end)
         tooltip:RegisterForDrag("LeftButton")
         tooltip:SetMovable(true)
         tooltip:SetColumnLayout(7, "LEFT", "LEFT", "CENTER", "CENTER", "CENTER", "CENTER", "CENTER")
@@ -1142,7 +1221,11 @@ function mod:ShowInboxGUI()
     local markedColor = function(str, col)
         return color(str, col == mod.db.char.sortField and "ffff7f" or "ffd200")
     end
+    local sizeMode = not mod.db.profile.freePosition and mod.db.profile.sizeMode or "page"
     local maxRows = mod.db.profile.pageSize
+    if (sizeMode == "match" or sizeMode == "max") and mod.db.profile.autoPageSize then
+        maxRows = mod._matchMailRows or 99999
+    end
     if inboxCache and #inboxCache > 0 then
         local firstRow, lastRow
         local totalRows = #inboxCache
@@ -1244,7 +1327,29 @@ function mod:ShowInboxGUI()
     end
 
     tooltip:SetFrameStrata("FULLSCREEN")
-    -- set max height to be 80% of the screen height
+
+    -- Measure actual line heights to calculate how many rows fit in the mail frame
+    if (sizeMode == "match" or sizeMode == "max") and not mod._matchMailRows then
+        local mailFrame = MagicUtil:GetMailFrame()
+        local numDataRows = inboxCache and #inboxCache or 0
+        if mailFrame and mailFrame:GetHeight() and mailFrame:GetHeight() > 0 and numDataRows > 0 and tooltip.height then
+            local toolbarH = mod._toolbar and mod._toolbar:GetHeight() or 0
+            local availHeight = (mailFrame:GetHeight() - toolbarH) / mod.db.profile.scale
+            local firstDataLine = tooltip.lines and tooltip.lines[3]
+            local rowH = firstDataLine and firstDataLine.height or mod.db.profile.fontSize
+            local vMargin = tooltip.cell_margin_v or 3
+            local actualRowHeight = rowH + vMargin
+            local totalOverhead = tooltip.height - numDataRows * actualRowHeight
+            local fitRows = math.floor((availHeight - totalOverhead - 20) / actualRowHeight)
+            if fitRows > 0 and fitRows < numDataRows then
+                mod._matchMailRows = fitRows
+                return self:ShowInboxGUI()
+            elseif fitRows >= numDataRows then
+                mod._matchMailRows = 99999
+            end
+        end
+    end
+
     mod:AdjustSizeAndPosition(tooltip)
 
     tooltip:Show()
