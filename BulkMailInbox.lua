@@ -411,13 +411,23 @@ function mod:MAIL_SHOW()
         self:Hook('InboxFrame_OnClick', nil, true)
         self:SecureHookScript(MailFrameTab1, 'OnClick', 'ShowInboxGUI')
         self:SecureHookScript(MailFrameTab2, 'OnClick', 'HideInboxGUI')
+        -- Reposition when OpenMailFrame is shown or hidden
+        if OpenMailFrame then
+            self:SecureHookScript(OpenMailFrame, 'OnShow', 'OnOpenMailFrameChanged')
+            self:SecureHookScript(OpenMailFrame, 'OnHide', 'OnOpenMailFrameChanged')
+        end
         -- Detect external mail operations (TSM, base UI "Open All", etc.)
         self:SecureHook('AutoLootMailItem', 'OnExternalMailAction')
         self:SecureHook('TakeInboxItem', 'OnExternalMailAction')
         self:SecureHook('TakeInboxMoney', 'OnExternalMailAction')
     end
 
-    self:ShowInboxGUI()
+    -- Don't show the GUI on initial open if there are no items or gold
+    inboxCacheBuild()
+    mod._suppressEmptyShow = not inboxCache or not next(inboxCache)
+    if not mod._suppressEmptyShow then
+        self:ShowInboxGUI()
+    end
     -- Watch for mail frame changes (e.g. TSM toggling between its UI and the default)
     mod._lastMailFrame = nil
     if not mod._mailFrameWatcher then
@@ -456,6 +466,7 @@ end
 
 function mod:MAIL_CLOSED()
     takeAllInProgress = false
+    mod._suppressEmptyShow = nil
     if mod._mailFrameWatcher then
         self:CancelTimer(mod._mailFrameWatcher)
         mod._mailFrameWatcher = nil
@@ -467,6 +478,12 @@ function mod:MAIL_CLOSED()
 end
 
 BulkMailInbox.PLAYER_ENTERING_WORLD = BulkMailInbox.MAIL_CLOSED  -- MAIL_CLOSED doesn't get called if, for example, the player accepts a port with the mail window open
+
+function mod:OnOpenMailFrameChanged()
+    if mod.inboxGUI and not mod.inboxGUI.moved then
+        mod:RepositionTooltip(mod.inboxGUI, mod.db.profile.scale, mod._toolbar and mod._toolbar:GetHeight() or 0)
+    end
+end
 
 function mod:UI_ERROR_MESSAGE(event, type, msg)  -- prevent infinite loop when inventory is full
     if msg == ERR_INV_FULL then
@@ -534,6 +551,18 @@ end
 
 function mod:MAIL_INBOX_UPDATE()
     if takeAllInProgress then return end
+
+    -- Auto-show the GUI if mail with items/gold arrived while suppressed
+    if mod._suppressEmptyShow then
+        inboxCacheBuild()
+        if inboxCache and next(inboxCache) then
+            mod._suppressEmptyShow = nil
+            if not mod.inboxGUI and MailFrame and MailFrame:IsVisible() then
+                mod:SmartScheduleTimer('BMI_RefreshInboxGUI', true, "ShowInboxGUI", 1.0)
+                return
+            end
+        end
+    end
 
     if (GetTime() - lastExternalMailAction) < 2.0 then
         -- External addon/UI is actively processing mail; use non-overriding
@@ -1134,6 +1163,8 @@ function mod:RepositionTooltip(tooltip, scale, barHeight)
     tooltip:ClearAllPoints()
     if isTSM then
         tooltip:SetPoint("TOPLEFT", mailFrame, "TOPRIGHT", 5, -toolbarOffset)
+    elseif OpenMailFrame and OpenMailFrame:IsShown() then
+        tooltip:SetPoint("TOPLEFT", OpenMailFrame, "TOPRIGHT", 5, -toolbarOffset)
     elseif MailFrame and MailFrame:GetRight() then
         tooltip:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", 5, -toolbarOffset)
     else
@@ -1169,6 +1200,8 @@ end
 
 function mod:ShowInboxGUI()
     if not mod.db.char.inboxUI then return end
+    -- If inbox was empty on open and GUI isn't shown yet, suppress until mail arrives
+    if mod._suppressEmptyShow and not mod.inboxGUI then return end
     if not inboxCache or not next(inboxCache) then
         inboxCacheBuild()
     end
@@ -1200,6 +1233,31 @@ function mod:ShowInboxGUI()
         tooltip:RegisterForDrag("LeftButton")
         tooltip:SetMovable(true)
         tooltip:SetColumnLayout(7, "LEFT", "LEFT", "CENTER", "CENTER", "CENTER", "CENTER", "CENTER")
+        tooltip:HookScript("OnMouseWheel", function(_, delta)
+            if not IsShiftKeyDown() then return end
+            if delta > 0 and startPage > 0 then
+                startPage = startPage - 1
+                mod:ShowInboxGUI()
+            elseif delta < 0 then
+                startPage = startPage + 1
+                mod:ShowInboxGUI()
+            end
+        end)
+        tooltip:EnableKeyboard(true)
+        tooltip:SetPropagateKeyboardInput(true)
+        tooltip:SetScript("OnKeyDown", function(self, key)
+            if key == "A" and startPage > 0 then
+                self:SetPropagateKeyboardInput(false)
+                startPage = startPage - 1
+                mod:ShowInboxGUI()
+            elseif key == "D" then
+                self:SetPropagateKeyboardInput(false)
+                startPage = startPage + 1
+                mod:ShowInboxGUI()
+            else
+                self:SetPropagateKeyboardInput(true)
+            end
+        end)
         mod.inboxGUI = tooltip
         startPage = 0
     else
