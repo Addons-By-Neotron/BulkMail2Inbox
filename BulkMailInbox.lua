@@ -389,9 +389,19 @@ function mod:OnEnable()
     if not _G.GetContainerItemInfo then
         self:RegisterEvent('PLAYER_INTERACTION_MANAGER_FRAME_HIDE')
     end
-    -- Handle being LoD loaded while at the mailbox
-    if MailFrame:IsVisible() then
+    -- Handle being LoD loaded while at the mailbox.
+    -- Check both MailFrame (default UI) and the player interaction state
+    -- (covers TSM or other addons that replace the mail frame).
+    local atMailbox = MailFrame:IsVisible()
+    if not atMailbox and C_PlayerInteractionManager and C_PlayerInteractionManager.IsInteractingWithNpcOfType then
+        atMailbox = C_PlayerInteractionManager.IsInteractingWithNpcOfType(Enum.PlayerInteractionType.MailInfo)
+    end
+    if atMailbox then
         self:MAIL_SHOW()
+        -- After reload, inbox data may not be available yet; force a
+        -- server refresh so MAIL_INBOX_UPDATE fires and clears the
+        -- _suppressEmptyShow flag once items are known.
+        CheckInbox()
     end
 end
 
@@ -438,6 +448,9 @@ end
 function mod:CheckMailFrameChanged()
     local mailFrame, isTSM = MagicUtil:GetMailFrame()
     if mailFrame ~= mod._lastMailFrame then
+        -- Don't commit the change while ShowInboxGUI is suppressed;
+        -- we need this to re-trigger once the GUI can actually appear.
+        if mod._suppressEmptyShow then return end
         mod._lastMailFrame = mailFrame
         mod._matchMailRows = nil
         if isTSM then
@@ -557,9 +570,12 @@ function mod:MAIL_INBOX_UPDATE()
         inboxCacheBuild()
         if inboxCache and next(inboxCache) then
             mod._suppressEmptyShow = nil
-            if not mod.inboxGUI and MailFrame and MailFrame:IsVisible() then
-                mod:SmartScheduleTimer('BMI_RefreshInboxGUI', true, "ShowInboxGUI", 1.0)
-                return
+            if not mod.inboxGUI then
+                local mf = MagicUtil:GetMailFrame()
+                if mf and mf:IsVisible() then
+                    mod:SmartScheduleTimer('BMI_RefreshInboxGUI', true, "ShowInboxGUI", 1.0)
+                    return
+                end
             end
         end
     end
