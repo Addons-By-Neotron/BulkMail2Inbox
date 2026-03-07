@@ -1314,9 +1314,9 @@ function mod:ShowInboxGUI()
             firstRow = maxRows * startPage + 1
             while firstRow > totalRows and startPage >= 0 do
                 startPage = startPage - 1
-                firstRow = maxRows * startPage
+                firstRow = maxRows * startPage + 1
             end
-            lastRow = math.min(firstRow+maxRows, totalRows)
+            lastRow = math.min(firstRow + maxRows - 1, totalRows)
             _addHeaderAndNavigation(tooltip, totalRows, firstRow, lastRow)
         else
             startPage = 0
