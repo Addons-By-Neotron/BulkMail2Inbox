@@ -1249,14 +1249,21 @@ function mod:ShowInboxGUI()
         tooltip:RegisterForDrag("LeftButton")
         tooltip:SetMovable(true)
         tooltip:SetColumnLayout(7, "LEFT", "LEFT", "CENTER", "CENTER", "CENTER", "CENTER", "CENTER")
-        tooltip:HookScript("OnMouseWheel", function(_, delta)
-            if not IsShiftKeyDown() then return end
-            if delta > 0 and startPage > 0 then
-                startPage = startPage - 1
-                mod:ShowInboxGUI()
-            elseif delta < 0 then
-                startPage = startPage + 1
-                mod:ShowInboxGUI()
+        tooltip:EnableMouseWheel(true)
+        local baseOnMouseWheel = getmetatable(tooltip).__index.GetScript and tooltip:GetScript("OnMouseWheel")
+        tooltip:SetScript("OnMouseWheel", function(self, delta)
+            if IsShiftKeyDown() then
+                if delta > 0 and startPage > 0 then
+                    startPage = startPage - 1
+                    mod:ShowInboxGUI()
+                elseif delta < 0 then
+                    startPage = startPage + 1
+                    mod:ShowInboxGUI()
+                end
+                return
+            end
+            if baseOnMouseWheel then
+                baseOnMouseWheel(self, delta)
             end
         end)
         tooltip:EnableKeyboard(true)
