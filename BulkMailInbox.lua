@@ -414,6 +414,8 @@ end
 ------------------------------------------------------------------------------
 function mod:MAIL_SHOW()
     ibIndex = GetInboxNumItems()
+    -- Allow TSM frame detection to re-scan (TSM may create its frame lazily)
+    MagicUtil:ResetTSMFrameCache()
 
     if not self:IsHooked('CheckInbox') then
         self:SecureHook('CheckInbox', 'RefreshInboxGUI')
