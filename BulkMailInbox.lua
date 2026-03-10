@@ -25,6 +25,7 @@ local _G = _G
 local fmt = string.format
 local lower = string.lower
 local hasCommandPending = C_Mail and C_Mail.IsCommandPending
+local issecretvalue = issecretvalue or function() return false end
 
 local sortFields, markTable  -- tables
 local ibIndex, ibAttachIndex, numInboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull, filterText -- variables
@@ -129,7 +130,7 @@ local function inboxCacheBuild()
                         'index', i, 'sender', sender, 'bmid', daysLeft..subject..0, 'returnable', not wasReturned, 'cod', cod,
                         'daysLeft', daysLeft, 'itemLink', title, 'money', money, 'texture', "Interface\\Icons\\INV_Misc_Coin_01"
                 ))
-                inboxCash = inboxCash + money
+                if not issecretvalue(money) then inboxCash = inboxCash + money end
             end
         end
         if numItems then
@@ -898,12 +899,12 @@ local function _onEnterFunc(frame, info)  -- contributed by bigzero
     if IsShiftKeyDown() then
         GameTooltip_ShowCompareItem()
     end
-    if info.money then
+    if info.money and not issecretvalue(info.money) then
         GameTooltip:AddLine(ENCLOSED_MONEY, "", 1, 1, 1)
         SetTooltipMoney(GameTooltip, info.money)
         SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
     end
-    if (info.cod or 0) > 0 then
+    if (info.cod or 0) > 0 and not issecretvalue(info.cod) then
         GameTooltip:AddLine(COD_AMOUNT, "", 1, 1, 1)
         SetTooltipMoney(GameTooltip, info.cod)
         SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
@@ -1335,7 +1336,7 @@ function mod:ShowInboxGUI()
             end
             y = tooltip:AddLine("",
                     itemText,
-                    markedColor(info.money and abacus:FormatMoneyFull(info.money) or info.qty, 2),
+                    markedColor(info.money and not issecretvalue(info.money) and abacus:FormatMoneyFull(info.money) or info.qty, 2),
                     markedColor(info.returnable and L["Yes"] or L["No"], 3),
                     markedColor(info.sender, 4),
                     markedColor(fmt("%0.1f", info.daysLeft), 5),
