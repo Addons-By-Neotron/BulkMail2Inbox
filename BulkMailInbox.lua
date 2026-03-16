@@ -901,13 +901,15 @@ local function _onEnterFunc(frame, info)  -- contributed by bigzero
     end
     if info.money and not issecretvalue(info.money) then
         GameTooltip:AddLine(ENCLOSED_MONEY, "", 1, 1, 1)
-        SetTooltipMoney(GameTooltip, info.money)
-        SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+        if pcall(SetTooltipMoney, GameTooltip, info.money) then
+            SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+        end
     end
     if (info.cod or 0) > 0 and not issecretvalue(info.cod) then
         GameTooltip:AddLine(COD_AMOUNT, "", 1, 1, 1)
-        SetTooltipMoney(GameTooltip, info.cod)
-        SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+        if pcall(SetTooltipMoney, GameTooltip, info.cod) then
+            SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+        end
     end
     GameTooltip:Show()
     frame:SetScript("OnKeyDown", _toggleCompareItem)
@@ -1457,6 +1459,7 @@ function mod:OptReg(optname, tbl, cmd)
     configPanes[#configPanes+1] = optname
     return regtable
 end
+
 function mod:OpenConfigMenu(parentframe)
     -- create the menu
     local frame = LD:OpenAce3Menu(mod.opts)
