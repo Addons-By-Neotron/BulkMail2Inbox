@@ -20,7 +20,6 @@ local LDB      = LibStub("LibDataBroker-1.1", true)
 local LD       = LibStub("LibDropdown-1.0")
 local MagicUtil = LibStub("LibMagicUtil-1.0")
 
-
 local _G = _G
 local fmt = string.format
 local lower = string.lower
@@ -900,16 +899,10 @@ local function _onEnterFunc(frame, info)  -- contributed by bigzero
         GameTooltip_ShowCompareItem()
     end
     if info.money and not issecretvalue(info.money) then
-        GameTooltip:AddLine(ENCLOSED_MONEY, "", 1, 1, 1)
-        if pcall(SetTooltipMoney, GameTooltip, info.money) then
-            SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
-        end
+        GameTooltip:AddLine(ENCLOSED_MONEY..": "..GetCoinTextureString(info.money), "", 1, 1, 1)
     end
     if (info.cod or 0) > 0 and not issecretvalue(info.cod) then
-        GameTooltip:AddLine(COD_AMOUNT, "", 1, 1, 1)
-        if pcall(SetTooltipMoney, GameTooltip, info.cod) then
-            SetMoneyFrameColor('GameTooltipMoneyFrame', HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
-        end
+        GameTooltip:AddLine(COD_AMOUNT..": "..GetCoinTextureString(info.cod), "", 1, 1, 1)
     end
     GameTooltip:Show()
     frame:SetScript("OnKeyDown", _toggleCompareItem)
