@@ -26,6 +26,7 @@ local lower = string.lower
 local hasCommandPending = C_Mail and C_Mail.IsCommandPending
 local issecretvalue = issecretvalue or function() return false end
 local GetCoinTextureString = GetCoinTextureString or (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString)
+local GetItemInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
 
 local sortFields, markTable  -- tables
 local ibIndex, ibAttachIndex, numInboxItems, inboxCash, cleanPass, cashOnly, markOnly, takeAllInProgress, invFull, filterText -- variables
