@@ -1,1 +1,3 @@
-Libs
+Libs/*
+!Libs/LibMagicUtil-1.0/
+!Libs/LibMagicUtil-1.0/**

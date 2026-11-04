@@ -18,4 +18,8 @@ externals:
         Libs/AceGUI-3.0-SharedMediaWidgets: https://repos.wowace.com/wow/ace-gui-3-0-shared-media-widgets/trunk/AceGUI-3.0-SharedMediaWidgets
         Libs/LibSharedMedia-3.0: https://repos.wowace.com/wow/libsharedmedia-3-0/trunk/LibSharedMedia-3.0
         Libs/LibDropdown-1.0: https://github.com/neotron/WoW-LibDropDown.git
-        Libs/LibMagicUtil-1.0: https://github.com/neotron/WoW-libMagicUtil.git
+# LibMagicUtil-1.0 is vendored under Libs/LibMagicUtil-1.0 (upstream 898ecb6).
+# Its locale files used a localization substitution tag. Packagers that rewrite
+# those tags inside an embedded library insert BulkMailInbox phrases, including
+# zhCN/zhTW strings with a raw newline, which Lua parses as an unfinished string.
+# The lasting fix is to remove that tag in https://github.com/Addons-By-Neotron/LibMagicUtil
