@@ -980,9 +980,9 @@ local function _createOrAttachSearchBar(tooltip)
         button = _createButton("TS", toolbar, function() takeAll(false, true) end, button, -2,
                 L["Take Selected"], L["Take all selected items from the mailbox."])
         button = _createButton("TC", toolbar, function() takeAll(true) end, button, -2,
-                L["Take Cash"], L["Take all money from the mailbox. If the search filter is used,\nmoney will only be taken from mails which the search term."])
+                L["Take Cash"], L["Take all money from the mailbox. If the search filter is used,"] .. "\n" .. L["money will only be taken from mails which the search term."])
         button = _createButton("TA", toolbar, function() takeAll() end, button, -2,
-                L["Take All"], L["Take all items from the mailbox. If the search filter is used,\nonly items matching the search term will be taken."])
+                L["Take All"], L["Take all items from the mailbox. If the search filter is used,"] .. "\n" .. L["only items matching the search term will be taken."])
 
         mod.buttons.prev = prevButton
         mod.buttons.next = nextButton
@@ -1008,7 +1008,7 @@ local function _createOrAttachSearchBar(tooltip)
 
         editBox:SetAutoFocus(false)
         editBox:SetPoint("RIGHT", button, "LEFT", -10, 0)
-        _addTooltipToFrame(editBox, L["Search"], L["Filter the inbox display to items matching the term entered here.\nTake All and Take Cash actions are limited to items matching the inbox filter."])
+        _addTooltipToFrame(editBox, L["Search"], L["Filter the inbox display to items matching the term entered here."] .. "\n" .. L["Take All and Take Cash actions are limited to items matching the inbox filter."])
 
 
         local text = toolbar:CreateFontString(nil, nil, "GameFontNormal")
