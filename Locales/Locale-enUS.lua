@@ -23,7 +23,6 @@ L["Ctrl - Return Containing Mail"] = true
 L["Ctrl-click Return"] = true
 L["Disable Tooltips"] = true
 L["Disable the help tooltips for the toolbar buttons."] = true
-L["Enable 'Take All' button in inbox."] = true
 L["Enable Alt-Click on inbox items to delete the mail in which they are contained."] = true
 L["Enable Ctrl-click on inbox items to return the mail in which they are contained."] = true
 L["Enable Shift-click on inbox items to take them."] = true
@@ -79,4 +78,3 @@ L["Alt-click - Select/deselect all of same item"] = true
 L["Shift-click - Take item"] = true
 L["Ctrl-click - Return mail"] = true
 L["Alt-click - Delete mail (returned only)"] = true
---@localization(locale="enUS", format="lua_additive_table", same-key-is-true=true, handle-subnamespaces="concat")@
